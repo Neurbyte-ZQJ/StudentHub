@@ -1,0 +1,1955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>StudentHub · 路演 · 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@500;700&display=swap" />
+  <style>
+    /* ============================================================
+       StudentHub Roadshow · Terminal / Mission-Control
+       黑底 + 蓝绿数据光 + 网格栅格 + 终端/示波器/雷达
+       反 AI Slop：不用渐变文字 / 不用霓虹糊一脸 / 不用玻璃态卡片
+       ============================================================ */
+
+    :root {
+      /* 调色 - 深色基调，避免纯黑 */
+      --bg-0:      oklch(8% 0.012 240);     /* 主背景 - 深蓝黑 */
+      --bg-1:      oklch(11% 0.014 240);    /* 卡片表面 */
+      --bg-2:      oklch(15% 0.016 240);    /* 浮起层 */
+      --line:      oklch(28% 0.018 235);    /* 1px 描边 */
+      --line-soft: oklch(22% 0.014 235);    /* 更弱的线 */
+      --ink:       oklch(94% 0.010 95);     /* 主文字 - 暖白 */
+      --ink-2:     oklch(78% 0.012 95);     /* 次级 */
+      --ink-3:     oklch(58% 0.014 95);     /* 辅助 */
+      --ink-4:     oklch(40% 0.014 95);     /* 极弱 */
+
+      /* 数据色 - 控制室仪表盘 */
+      --c-cyan:    oklch(82% 0.150 200);    /* 主数据色 */
+      --c-cyan-d:  oklch(60% 0.150 200);
+      --c-amber:   oklch(82% 0.150 75);     /* 警示 */
+      --c-lime:    oklch(82% 0.150 145);    /* 成功 */
+      --c-rose:    oklch(70% 0.170 25);     /* 错误 */
+      --c-violet:  oklch(72% 0.150 290);    /* 二级 */
+
+      --font-sans:  "Space Grotesk", "Noto Sans SC", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-mono:  "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+      --font-serif: "Noto Serif SC", "Songti SC", serif;
+
+      --fs-xs:   clamp(0.68rem, 0.68rem + 0.05vw, 0.74rem);
+      --fs-sm:   clamp(0.78rem, 0.76rem + 0.1vw, 0.86rem);
+      --fs-base: clamp(0.92rem, 0.88rem + 0.2vw, 1.02rem);
+      --fs-lg:   clamp(1.05rem, 0.98rem + 0.3vw, 1.22rem);
+      --fs-xl:   clamp(1.25rem, 1.1rem + 0.6vw, 1.55rem);
+      --fs-2xl:  clamp(1.7rem, 1.3rem + 1.4vw, 2.3rem);
+      --fs-3xl:  clamp(2.2rem, 1.6rem + 2vw, 3.1rem);
+      --fs-4xl:  clamp(2.8rem, 2rem + 2.6vw, 4.2rem);
+      --fs-display: clamp(3.6rem, 2.4rem + 4vw, 6.4rem);
+
+      --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px;
+      --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;
+
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg-0);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: var(--fs-base);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      font-feature-settings: "kern", "liga", "calt", "ss01";
+    }
+
+    body {
+      overflow-y: auto;
+      overflow-x: hidden;
+      scroll-snap-type: y proximity;
+      scroll-behavior: smooth;
+    }
+
+    /* 全局栅格 + 噪点 */
+    body::before {
+      content: "";
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background-image:
+        linear-gradient(to right, oklch(28% 0.018 235 / 0.18) 1px, transparent 1px),
+        linear-gradient(to bottom, oklch(28% 0.018 235 / 0.10) 1px, transparent 1px);
+      background-size: 80px 80px, 80px 80px;
+      mask-image: radial-gradient(ellipse at center, black 0%, black 50%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse at center, black 0%, black 50%, transparent 100%);
+    }
+
+    body::after {
+      content: "";
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background:
+        radial-gradient(circle at 15% 12%, oklch(82% 0.150 200 / 0.05) 0%, transparent 35%),
+        radial-gradient(circle at 85% 88%, oklch(72% 0.150 290 / 0.04) 0%, transparent 40%);
+    }
+
+    /* ============== Deck / Slide ============== */
+    .deck { position: relative; z-index: 3; }
+
+    .slide {
+      width: 100vw;
+      min-height: 100vh;
+      min-height: 100dvh;
+      scroll-snap-align: start;
+      display: grid;
+      grid-template-columns: 1fr;
+      align-content: center;
+      padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1.5rem, 5.5vw, 5.5rem);
+      position: relative;
+    }
+    .slide > * { max-width: 1500px; width: 100%; margin-inline: auto; }
+
+    /* ============== Top bar / status line ============== */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 40;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 10px clamp(1rem, 3vw, 2rem);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      background: oklch(8% 0.012 240 / 0.7);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+    }
+    .topbar .left { display: inline-flex; align-items: center; gap: 12px; }
+    .topbar .right { display: inline-flex; align-items: center; gap: 12px; justify-self: end; }
+    .topbar .center { color: var(--ink-2); }
+    .topbar .led {
+      width: 6px; height: 6px; border-radius: 99px;
+      background: var(--c-lime);
+      box-shadow: 0 0 8px var(--c-lime);
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { opacity: .4; } }
+
+    /* ============== Typography ============== */
+    .mono { font-family: var(--font-mono); font-feature-settings: "ss01"; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--c-cyan);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 18px; height: 1px;
+      background: var(--c-cyan);
+    }
+
+    .t-title {
+      font-family: var(--font-sans);
+      font-weight: 500;
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+    }
+    .t-title.xl { font-size: var(--fs-display); font-weight: 400; }
+    .t-title.l  { font-size: var(--fs-4xl); font-weight: 500; }
+    .t-title.m  { font-size: var(--fs-3xl); font-weight: 500; }
+    .t-title.s  { font-size: var(--fs-2xl); font-weight: 500; }
+
+    .t-serif {
+      font-family: var(--font-serif);
+      font-weight: 500;
+      font-style: italic;
+      color: var(--c-cyan);
+      letter-spacing: -0.01em;
+    }
+
+    .lede {
+      font-size: var(--fs-lg);
+      line-height: 1.45;
+      color: var(--ink-2);
+      max-width: 52ch;
+    }
+    .lede.italic { font-style: italic; color: var(--ink-2); }
+
+    p { color: var(--ink-2); max-width: 64ch; }
+    p + p { margin-top: var(--s-3); }
+
+    .num-display {
+      font-family: var(--font-sans);
+      font-size: var(--fs-4xl);
+      line-height: 0.9;
+      font-weight: 500;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+    }
+    .num-display .unit { color: var(--ink-3); font-size: 0.4em; font-weight: 400; margin-left: 4px; }
+
+    /* ============== Section head ============== */
+    .sec-head { display: grid; gap: var(--s-3); margin-bottom: var(--s-6); }
+    .sec-head h2 { max-width: 22ch; }
+    .sec-head .lede { max-width: 56ch; }
+
+    /* ============== Cover ============== */
+    .slide.cover {
+      align-content: stretch;
+      padding: 0 clamp(1.5rem, 5.5vw, 5.5rem);
+    }
+    .cover-grid {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      height: 100vh; height: 100dvh;
+      padding-block: clamp(2rem, 6vh, 4rem);
+    }
+    .cover-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+      gap: var(--s-8);
+      align-items: end;
+    }
+    .cover-title {
+      font-family: var(--font-sans);
+      font-size: var(--fs-display);
+      font-weight: 400;
+      line-height: 0.92;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+    }
+    .cover-title em {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-weight: 500;
+      color: var(--c-cyan);
+    }
+    .cover-sub {
+      font-size: var(--fs-lg);
+      color: var(--ink-2);
+      line-height: 1.45;
+      max-width: 36ch;
+      margin-top: var(--s-5);
+    }
+
+    .cover-meta {
+      display: grid;
+      gap: var(--s-4);
+      align-content: end;
+      border-left: 1px solid var(--line);
+      padding-left: var(--s-5);
+    }
+    .cover-meta dt {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-bottom: 4px;
+    }
+    .cover-meta dd { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink); }
+    .cover-meta dl + dl { margin-top: var(--s-3); }
+
+    .cover-foot {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: var(--s-5);
+      align-items: center;
+      border-top: 1px solid var(--line);
+      padding-top: var(--s-4);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .cover-foot .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); }
+    .cover-foot .brand-mark {
+      width: 14px; height: 14px;
+      border: 1.5px solid var(--c-cyan);
+      position: relative;
+    }
+    .cover-foot .brand-mark::before, .cover-foot .brand-mark::after {
+      content: ""; position: absolute; background: var(--c-cyan);
+    }
+    .cover-foot .brand-mark::before { left: 0; top: 50%; width: 100%; height: 1px; }
+    .cover-foot .brand-mark::after { top: 0; left: 50%; width: 1px; height: 100%; }
+
+    /* ============== Right-side dot index ============== */
+    .idx-rail {
+      position: fixed;
+      right: 1.2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+      padding: 10px 7px;
+      background: oklch(11% 0.014 240 / 0.55);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px oklch(0% 0 0 / 0.4);
+    }
+
+    .idx-rail .it {
+      width: 6px;
+      height: 6px;
+      padding: 0;
+      border: 0;
+      border-radius: 99px;
+      background: var(--ink-4);
+      cursor: pointer;
+      transition: all .35s var(--ease-out);
+      opacity: 0.55;
+    }
+    .idx-rail .it:hover {
+      background: var(--ink-2);
+      opacity: 0.9;
+    }
+    .idx-rail .it.active {
+      height: 18px;
+      background: var(--c-cyan);
+      opacity: 1;
+      box-shadow: 0 0 8px var(--c-cyan);
+    }
+    .idx-rail .it:focus-visible {
+      outline: 1px solid var(--c-cyan);
+      outline-offset: 3px;
+    }
+
+    /* ============== Section number / corner ============== */
+    .corner {
+      position: fixed;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      z-index: 30;
+    }
+    .corner.tl { top: 1.2rem; left: clamp(1rem, 2.5vw, 2rem); }
+    .corner.br { bottom: 1.2rem; right: clamp(1rem, 2.5vw, 2rem); }
+
+    /* ============== Progress bar (bottom thin line) ============== */
+    .progress {
+      position: fixed;
+      left: 0; bottom: 0;
+      height: 1px;
+      background: var(--c-cyan);
+      width: 0;
+      z-index: 50;
+      transition: width .5s var(--ease-out-quart);
+      box-shadow: 0 0 6px var(--c-cyan);
+    }
+
+    /* ============== Keyboard hint ============== */
+    .kbd {
+      position: fixed;
+      left: clamp(1rem, 2.5vw, 2rem);
+      bottom: 1.2rem;
+      z-index: 30;
+      color: var(--ink-3);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .kbd kbd {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      padding: 2px 5px;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      background: var(--bg-1);
+      color: var(--ink-2);
+    }
+
+    /* ============== Problem slide ============== */
+    .problem-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: var(--s-7);
+    }
+    .stat-block {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--ink);
+      border-bottom: 1px solid var(--ink);
+    }
+    .stat-block .item {
+      padding: var(--s-4) var(--s-4) var(--s-4) 0;
+      border-left: 1px solid var(--line);
+      padding-left: var(--s-4);
+    }
+    .stat-block .item:first-child { border-left: 0; padding-left: 0; }
+    .stat-block .item .lbl {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .stat-block .item .v {
+      font-family: var(--font-sans);
+      font-size: var(--fs-3xl);
+      color: var(--ink);
+      line-height: 1;
+      margin-top: var(--s-3);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+    }
+    .stat-block .item .v .accent { color: var(--c-amber); }
+    .stat-block .item .desc { font-size: var(--fs-sm); color: var(--ink-2); margin-top: var(--s-2); }
+
+    .pain-list { list-style: none; display: grid; gap: 0; }
+    .pain-list li {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: var(--s-4);
+      padding: var(--s-4) 0;
+      border-bottom: 1px solid var(--line);
+      align-items: start;
+    }
+    .pain-list .idx {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--c-amber);
+      letter-spacing: 0.1em;
+    }
+    .pain-list .text { color: var(--ink-2); line-height: 1.5; }
+    .pain-list .text strong { color: var(--ink); font-weight: 600; }
+
+    /* ============== Solution / quote ============== */
+    .slide.quote {
+      display: grid;
+      place-items: center;
+      padding-inline: clamp(2rem, 8vw, 8rem);
+    }
+    .quote-grid { max-width: 1100px; width: 100%; display: grid; gap: var(--s-6); }
+    .quote-grid blockquote {
+      font-family: var(--font-sans);
+      font-size: var(--fs-3xl);
+      font-weight: 500;
+      line-height: 1.18;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+    .quote-grid blockquote em {
+      font-family: var(--font-serif);
+      font-style: italic;
+      color: var(--c-cyan);
+    }
+    .quote-grid .cite {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .quote-grid .cite::before {
+      content: "";
+      width: 28px; height: 1px;
+      background: var(--c-cyan);
+    }
+
+    /* ============== Overview / Arch diagram ============== */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: var(--s-6);
+    }
+    .arch-side { display: grid; align-content: start; gap: var(--s-4); border-right: 1px solid var(--line); padding-right: var(--s-5); }
+    .arch-side .item { display: grid; gap: 4px; }
+    .arch-side .item .lbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-3); }
+    .arch-side .item .val { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink); }
+
+    .arch-canvas { display: grid; gap: var(--s-4); }
+    .arch-layer {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: var(--s-5);
+      align-items: center;
+      padding: var(--s-3) 0;
+      border-top: 1px solid var(--line);
+    }
+    .arch-layer .layer-lbl {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+    .arch-layer .layer-blocks { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      color: var(--ink-2);
+      background: var(--bg-1);
+    }
+    .chip.is-accent {
+      background: var(--c-cyan);
+      border-color: var(--c-cyan);
+      color: var(--bg-0);
+      font-weight: 500;
+    }
+    .chip.is-soft { background: transparent; color: var(--ink-3); }
+    .chip.is-amber { color: var(--c-amber); border-color: oklch(28% 0.05 75 / 0.5); }
+
+    /* ============== Module head (大写 + mono 编号) ============== */
+    .module-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: var(--s-5);
+      align-items: end;
+      padding-bottom: var(--s-3);
+      border-bottom: 1px solid var(--ink);
+      margin-bottom: var(--s-5);
+    }
+    .module-head .mod-code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--c-cyan);
+      margin-bottom: 6px;
+    }
+    .module-head h2 { font-size: var(--fs-3xl); }
+    .module-head .mod-stats { display: grid; gap: 2px; text-align: right; }
+    .module-head .mod-stats .v { font-family: var(--font-mono); font-size: var(--fs-base); color: var(--ink); }
+    .module-head .mod-stats .l { font-family: var(--font-mono); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-3); }
+
+    /* ============== Flow list (timeline of state) ============== */
+    .flow { display: grid; gap: 0; }
+    .flow .step {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: var(--s-4);
+      padding: var(--s-4) 0;
+      border-bottom: 1px solid var(--line);
+      align-items: start;
+    }
+    .flow .step:last-child { border-bottom: 0; }
+    .flow .step .step-num {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--c-cyan);
+      letter-spacing: 0.1em;
+      font-variant-numeric: tabular-nums;
+    }
+    .flow .step .step-title { font-size: var(--fs-lg); color: var(--ink); font-weight: 500; margin-bottom: 4px; }
+    .flow .step .step-desc { font-size: var(--fs-sm); color: var(--ink-2); line-height: 1.5; }
+
+    /* ============== Three columns (security, pilot...) ============== */
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border-top: 1px solid var(--ink);
+    }
+    .three-col .col {
+      padding: var(--s-4);
+      border-left: 1px solid var(--line);
+    }
+    .three-col .col:first-child { border-left: 0; padding-left: 0; }
+    .three-col .col h4 {
+      font-size: var(--fs-lg);
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .three-col .col .tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--c-cyan);
+      margin-bottom: var(--s-3);
+    }
+    .three-col .col p { font-size: var(--fs-sm); color: var(--ink-2); line-height: 1.55; }
+
+    /* ============== State machine table ============== */
+    .sm-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: var(--s-4);
+      font-size: var(--fs-sm);
+    }
+    .sm-table th, .sm-table td {
+      text-align: left;
+      padding: var(--s-3) var(--s-4);
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    .sm-table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      border-bottom: 1px solid var(--ink);
+    }
+    .sm-table td { color: var(--ink-2); }
+    .sm-table .code { font-family: var(--font-mono); color: var(--c-cyan); }
+    .sm-table .muted { color: var(--ink-3); }
+    .sm-table tr.is-us td { background: oklch(82% 0.150 200 / 0.06); }
+    .sm-table tr.is-us td:first-child { color: var(--c-cyan); font-weight: 500; }
+
+    /* ============== Timeline (roadmap) ============== */
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 0;
+      position: relative;
+      margin-top: var(--s-5);
+    }
+    .timeline::before {
+      content: "";
+      position: absolute; left: 0; right: 0; top: 11px;
+      height: 1px;
+      background: var(--line);
+    }
+    .timeline .node { grid-column: span 3; padding: 0 var(--s-3); position: relative; }
+    .timeline .node::before {
+      content: "";
+      position: absolute; left: var(--s-3); top: 7px;
+      width: 9px; height: 9px;
+      border: 1px solid var(--c-cyan);
+      background: var(--bg-0);
+      border-radius: 99px;
+    }
+    .timeline .node.now::before { background: var(--c-cyan); box-shadow: 0 0 8px var(--c-cyan); }
+    .timeline .node.done::before { background: var(--c-lime); border-color: var(--c-lime); box-shadow: 0 0 6px var(--c-lime); }
+    .timeline .node .sprint {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin-top: var(--s-4);
+    }
+    .timeline .node .what { font-size: var(--fs-lg); color: var(--ink); margin-top: 4px; font-weight: 500; }
+    .timeline .node .who { font-family: var(--font-mono); font-size: 10px; color: var(--ink-3); margin-top: 2px; letter-spacing: .1em; }
+
+    /* ============== Metric strip ============== */
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--ink);
+      border-bottom: 1px solid var(--line);
+    }
+    .metric-row .item { padding: var(--s-4); border-left: 1px solid var(--line); }
+    .metric-row .item:first-child { border-left: 0; padding-left: 0; }
+    .metric-row .item .lbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); }
+    .metric-row .item .v {
+      font-family: var(--font-sans);
+      font-size: var(--fs-3xl);
+      color: var(--ink);
+      line-height: 1;
+      margin-top: var(--s-3);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+    }
+    .metric-row .item .v .acc { color: var(--c-cyan); }
+    .metric-row .item .desc { font-size: var(--fs-sm); color: var(--ink-2); margin-top: var(--s-2); }
+
+    /* ============== Split two col ============== */
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+      gap: var(--s-7);
+      align-items: start;
+    }
+    .split.reverse { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+    .split .col h3 { font-size: var(--fs-2xl); color: var(--ink); margin-bottom: var(--s-3); font-weight: 500; }
+    .split .col h3 em { font-family: var(--font-serif); font-style: italic; color: var(--c-cyan); }
+    .split .col .lede { font-size: var(--fs-lg); color: var(--ink-2); margin-bottom: var(--s-4); }
+
+    .feature-list { list-style: none; display: grid; gap: var(--s-3); }
+    .feature-list li {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: var(--s-3);
+      align-items: start;
+      font-size: var(--fs-base);
+      color: var(--ink-2);
+    }
+    .feature-list li::before {
+      content: "›";
+      font-family: var(--font-mono);
+      color: var(--c-cyan);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .feature-list li strong { color: var(--ink); font-weight: 500; }
+
+    /* ============== Closing ============== */
+    .slide.closing { display: grid; grid-template-rows: 1fr auto; padding-block: clamp(2rem, 6vh, 4rem); }
+    .closing-main { display: grid; gap: var(--s-5); align-content: center; }
+    .closing-main .eyebrow { color: var(--c-cyan); }
+    .closing-main .closing-title {
+      font-family: var(--font-sans);
+      font-size: var(--fs-display);
+      font-weight: 400;
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+    }
+    .closing-main .closing-title em { font-family: var(--font-serif); font-style: italic; color: var(--c-cyan); }
+
+    .closing-foot {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--s-5);
+      border-top: 1px solid var(--ink);
+      padding-top: var(--s-3);
+    }
+    .closing-foot .item { display: grid; gap: 4px; }
+    .closing-foot .item .lbl { font-family: var(--font-mono); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); }
+    .closing-foot .item .val { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--ink); }
+
+    /* ============== Reveal animation ============== */
+    .reveal { opacity: 1; transform: translateY(0); }
+    .slide.is-current .reveal {
+      animation: reveal-up .7s var(--ease-out-quart) both;
+    }
+    .slide.is-current .reveal:nth-child(2) { animation-delay: .08s; }
+    .slide.is-current .reveal:nth-child(3) { animation-delay: .16s; }
+    .slide.is-current .reveal:nth-child(4) { animation-delay: .24s; }
+    .slide.is-current .reveal:nth-child(5) { animation-delay: .32s; }
+    .slide.is-current .reveal:nth-child(6) { animation-delay: .40s; }
+    .slide.is-current .reveal:nth-child(7) { animation-delay: .48s; }
+    .slide.is-current .reveal:nth-child(8) { animation-delay: .56s; }
+    .slide.is-current .reveal:nth-child(9) { animation-delay: .64s; }
+    .slide.is-current .reveal:nth-child(10) { animation-delay: .72s; }
+    @keyframes reveal-up {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+      .topbar .led { animation: none; }
+    }
+
+    /* ============== Responsive ============== */
+    @media (max-width: 980px) {
+      .cover-top { grid-template-columns: 1fr; gap: var(--s-5); }
+      .cover-meta { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: var(--s-4); }
+      .problem-grid, .arch-grid, .split, .split.reverse { grid-template-columns: 1fr; gap: var(--s-5); }
+      .stat-block { grid-template-columns: 1fr 1fr; }
+      .stat-block .item { border-left: 0; border-top: 1px solid var(--line); padding: var(--s-4) 0; }
+      .stat-block .item:first-child, .stat-block .item:nth-child(2) { border-top: 0; padding-top: 0; }
+      .three-col { grid-template-columns: 1fr; }
+      .three-col .col { border-left: 0; border-top: 1px solid var(--line); padding: var(--s-4) 0; }
+      .three-col .col:first-child { border-top: 0; padding-top: 0; }
+      .timeline { grid-template-columns: 1fr; }
+      .timeline::before { display: none; }
+      .timeline .node { padding-left: var(--s-5); margin-bottom: var(--s-3); border-top: 1px solid var(--line); padding-top: var(--s-3); }
+      .timeline .node:first-child { border-top: 0; padding-top: 0; }
+      .metric-row { grid-template-columns: 1fr 1fr; }
+      .metric-row .item { border-left: 0; border-top: 1px solid var(--line); padding: var(--s-3) 0; }
+      .metric-row .item:first-child, .metric-row .item:nth-child(2) { border-top: 0; padding-top: 0; }
+      .closing-foot { grid-template-columns: 1fr; gap: var(--s-3); }
+      .idx-rail { display: none; }
+      .arch-layer { grid-template-columns: 1fr; gap: var(--s-2); }
+      .arch-side { border-right: 0; border-bottom: 1px solid var(--line); padding-right: 0; padding-bottom: var(--s-4); }
+      .topbar { font-size: 9px; }
+    }
+    @media (max-width: 560px) {
+      .stat-block { grid-template-columns: 1fr; }
+      .metric-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <span class="left"><span class="led" aria-hidden="true"></span><span>SYS · ONLINE</span></span>
+    <span class="center mono" id="topCenter">STUDENTHUB // ROADSHOW · 2026.06</span>
+    <span class="right mono" id="topRight">v1.0 · CC BY-NC 4.0</span>
+  </div>
+
+  <span class="corner tl mono" id="cornerTL">SECTION · 00</span>
+  <span class="corner br mono" id="cornerBR">01 / 17</span>
+
+  <nav class="idx-rail" id="idxRail" aria-label="章节索引"></nav>
+
+  <div class="kbd">
+    <span>NEXT</span>
+    <kbd>→</kbd>
+    <kbd>SPACE</kbd>
+  </div>
+
+  <div class="progress" id="progress"></div>
+
+  <main class="deck" id="deck">
+
+    <!-- ============ 00. COVER ============ -->
+    <section class="slide cover" data-title="00 · Cover">
+      <div class="cover-grid">
+        <div class="cover-top">
+          <div class="label-col">
+            <span class="eyebrow reveal">// INITIATION · 2026</span>
+            <h1 class="cover-title reveal">
+              学生过程<br/>
+              管理<em>一站式</em><br/>
+              平台
+            </h1>
+            <p class="cover-sub reveal">围绕「同一名学生 + 同一份过程档案」，把团员发展、社团活动、学生社区、勤工助学、综合素质量化，统一进一台可审计的校园管理后台。</p>
+          </div>
+          <dl class="cover-meta reveal">
+            <dl>
+              <dt>AUDIENCE</dt>
+              <dd>// 高校 / 中职 学工线、团委、信息化中心</dd>
+            </dl>
+            <dl>
+              <dt>DEPLOY</dt>
+              <dd>// 单体应用 · 单 SQLite · Docker</dd>
+            </dl>
+            <dl>
+              <dt>SCOPE</dt>
+              <dd>// 问题 / 方案 / 架构 / 合规 / 路径</dd>
+            </dl>
+          </dl>
+        </div>
+        <footer class="cover-foot reveal">
+          <span class="brand"><span class="brand-mark" aria-hidden="true"></span> STUDENTHUB</span>
+          <span>ONE-STUDENT · PROCESS-LED · AUDITABLE</span>
+          <span>2026.06 · REV.01</span>
+        </footer>
+      </div>
+    </section>
+
+    <!-- ============ 01. PROBLEM ============ -->
+    <section class="slide" data-title="01 · Problem">
+      <div class="sec-head">
+        <span class="eyebrow reveal">01 · PROBLEM</span>
+        <h2 class="t-title l reveal">校园学生工作，<em class="t-serif">散落在 17 张表里</em>。</h2>
+        <p class="lede reveal">不是没有系统，而是「同一名学生」，在五个业务条线上被重复录入五次。</p>
+      </div>
+
+      <div class="problem-grid">
+        <div class="reveal">
+          <div class="stat-block">
+            <div class="item">
+              <span class="lbl">// Channels / Student</span>
+              <div class="v">5</div>
+              <div class="desc">TY · ST · SQ · QG · CMP 五条线</div>
+            </div>
+            <div class="item">
+              <span class="lbl">// Systems / School</span>
+              <div class="v">≈7</div>
+              <div class="desc">每校并行运行的「业务系统」</div>
+            </div>
+            <div class="item">
+              <span class="lbl">// Data Re-entry</span>
+              <div class="v">68<span class="accent">%</span></div>
+              <div class="desc">同一学生跨条线回填率</div>
+            </div>
+          </div>
+        </div>
+
+        <ul class="pain-list reveal">
+          <li>
+            <span class="idx">/01</span>
+            <span class="text"><strong>系统林立。</strong> 团员、社团、社区、资助、量化各一套账号、字典、字段，导一份名单要四个 Excel 拼。</span>
+          </li>
+          <li>
+            <span class="idx">/02</span>
+            <span class="text"><strong>过程丢失。</strong> 推优大会、勤工考勤、量化积分等关键事件靠人工填表，事后无法回放。</span>
+          </li>
+          <li>
+            <span class="idx">/03</span>
+            <span class="text"><strong>合规风险。</strong> 状态推进缺审计、敏感字段未脱敏、家长开放日拿不出一份「可解释」的过程档案。</span>
+          </li>
+          <li>
+            <span class="idx">/04</span>
+            <span class="text"><strong>学生无感。</strong> 系统是给老师用的，学生只是被填的对象，主体性几乎为零。</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ 02. SOLUTION ============ -->
+    <section class="slide quote" data-title="02 · Solution">
+      <div class="quote-grid">
+        <span class="eyebrow reveal">02 · SOLUTION</span>
+        <blockquote class="reveal">
+          把<em>「同一名学生」</em>作为唯一索引，<br/>
+          让过程数据<em>自己说话</em>，<br/>
+          让老师<em>回到育人</em>这件事上。
+        </blockquote>
+        <p class="cite reveal">// STUDENTHUB PRODUCT THESIS</p>
+      </div>
+    </section>
+
+    <!-- ============ 03. OVERVIEW ============ -->
+    <section class="slide" data-title="03 · Overview">
+      <div class="sec-head">
+        <span class="eyebrow reveal">03 · OVERVIEW</span>
+        <h2 class="t-title l reveal">11 个模块 + 1 个 IDX，<em class="t-serif">全部来自仓库</em>。</h2>
+        <p class="lede reveal">TY / ST / SQ / QG / CMP 五条业务线，叠加 auth / sys / file / noti / dashboard 等横切能力；模块之间只走 eventx。</p>
+      </div>
+
+      <div class="arch-grid reveal">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// MODULES</span><span class="val">11</span></div>
+          <div class="item"><span class="lbl">// BIZ</span><span class="val">5 + IDX</span></div>
+          <div class="item"><span class="lbl">// X-CUT</span><span class="val">5 (sys/file/noti/auth/dashboard)</span></div>
+          <div class="item"><span class="lbl">// GO LAYERS</span><span class="val">api / service / repo / statemachine</span></div>
+        </aside>
+        <div class="arch-canvas">
+          <div class="arch-layer">
+            <span class="layer-lbl">// L1 · Identity</span>
+            <div class="layer-blocks">
+              <span class="chip is-accent">idx_student</span>
+              <span class="chip is-soft">学籍 / 班级 / 标签</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">// L2 · Business (5 + 1)</span>
+            <div class="layer-blocks">
+              <span class="chip">TY 团员发展 · 8 子服务</span>
+              <span class="chip">ST 社团活动 · 招新 + 活动</span>
+              <span class="chip">SQ 学生社区 · 楼宇 / 查寝 / 事件</span>
+              <span class="chip">QG 勤工助学 · 岗位 / 考勤 / 困难 / 月评 / 续岗</span>
+              <span class="chip">CMP 量化 · 规则版本 + 得分</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">// L3 · Cross-cutting</span>
+            <div class="layer-blocks">
+              <span class="chip is-soft">auth · JWT + RBAC</span>
+              <span class="chip is-soft">noti · 4 通道</span>
+              <span class="chip is-soft">file · 上传 + 存储</span>
+              <span class="chip is-soft">sys · 用户 / 角色 / 菜单 / 字典 / 组织</span>
+              <span class="chip is-soft">dashboard · 聚合</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">// L4 · Trust</span>
+            <div class="layer-blocks">
+              <span class="chip is-amber">AES-256-GCM</span>
+              <span class="chip is-amber">RBAC · 细粒度</span>
+              <span class="chip is-amber">JWT · HS256</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04. TY ============ -->
+    <section class="slide" data-title="04 · Module TY">
+      <div class="module-head reveal">
+        <div>
+          <div class="mod-code">// MODULE · TY · 2000–2099</div>
+          <h2 class="t-title m">团员发展</h2>
+        </div>
+        <div class="mod-stats">
+          <div class="v">9 STATES</div>
+          <div class="l">// workflow nodes</div>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="col reveal">
+          <p class="lede">从「申请人提交」到「上级团委备案」共九个状态，全部由 <code class="mono" style="color:var(--c-cyan)">statem.Apply()</code> 推进，禁止绕过。</p>
+          <ul class="feature-list" style="margin-top:24px">
+            <li><span><strong>主表</strong> · ty_application · ty_development_meeting</span></li>
+            <li><span><strong>关键动作</strong> · 提交 / 推优 / 大会表决 / 公示 / 备案</span></li>
+            <li><span><strong>硬卡控</strong> · 14–28 周岁 · 推优大会到会率 ≥ 2/3</span></li>
+          </ul>
+        </div>
+        <ol class="flow reveal">
+          <li class="step"><span class="step-num">S0</span><div><div class="step-title">申请人提交</div><div class="step-desc">自动校验年龄 / 班级 / 回避关系</div></div></li>
+          <li class="step"><span class="step-num">S2</span><div><div class="step-title">班级推优</div><div class="step-desc">辅导员 + 班级同学双轨 · 到会率硬卡</div></div></li>
+          <li class="step"><span class="step-num">S4</span><div><div class="step-title">发展大会</div><div class="step-desc">现场扫码签到 · 逐人表决 · 结果留痕</div></div></li>
+          <li class="step"><span class="step-num">S6</span><div><div class="step-title">公示与备案</div><div class="step-desc">自动生成公示稿 · 推优到上级团委</div></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ 05. ST ============ -->
+    <section class="slide" data-title="05 · Module ST">
+      <div class="module-head reveal">
+        <div>
+          <div class="mod-code">// MODULE · ST · 3000–3099</div>
+          <h2 class="t-title m">社团活动</h2>
+        </div>
+        <div class="mod-stats">
+          <div class="v">CHECKIN · HOURS</div>
+          <div class="l">// core loop</div>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="col reveal">
+          <h3>活动即<em>记录</em>。</h3>
+          <p class="lede">社长发布活动 → 学生扫码签到 → 系统自动核算学时并汇入 CMP。</p>
+          <ul class="feature-list" style="margin-top:24px">
+            <li><span><strong>一键续期</strong> · 社团年度注册表自动汇总到校团委</span></li>
+            <li><span><strong>场地冲突</strong> · 同一时段同一场地系统级拒绝</span></li>
+            <li><span><strong>黑名单</strong> · 连续三次未签到自动提醒社长</span></li>
+          </ul>
+        </div>
+        <ol class="flow reveal">
+          <li class="step"><span class="step-num">01</span><div><div class="step-title">活动发布</div><div class="step-desc">社长在前端填写 · 提交后冻结模板</div></div></li>
+          <li class="step"><span class="step-num">02</span><div><div class="step-title">现场签到</div><div class="step-desc">GPS + 二维码 · 不可代签</div></div></li>
+          <li class="step"><span class="step-num">03</span><div><div class="step-title">学时入档</div><div class="step-desc">进入 CMP 综合素质量化明细</div></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ 06. SQ ============ -->
+    <section class="slide" data-title="06 · Module SQ">
+      <div class="module-head reveal">
+        <div>
+          <div class="mod-code">// MODULE · SQ · 4000–4099</div>
+          <h2 class="t-title m">学生社区</h2>
+        </div>
+        <div class="mod-stats">
+          <div class="v">DORM · REPAIR</div>
+          <div class="l">// life scene</div>
+        </div>
+      </div>
+
+      <div class="split reverse">
+        <ol class="flow reveal">
+          <li class="step"><span class="step-num">01</span><div><div class="step-title">入住 / 调宿</div><div class="step-desc">由学籍异动触发 · 全过程留痕</div></div></li>
+          <li class="step"><span class="step-num">02</span><div><div class="step-title">报修与回访</div><div class="step-desc">学生扫码提交 · 物业闭环后评价</div></div></li>
+          <li class="step"><span class="step-num">03</span><div><div class="step-title">文明寝室</div><div class="step-desc">查寝结果自动汇总 · 进入量化</div></div></li>
+        </ol>
+        <div class="col reveal">
+          <h3>生活，也是<em>过程</em>。</h3>
+          <p class="lede">把住宿、报修、查寝这些「生活流水账」沉淀为可量化、可回放的过程数据。</p>
+          <ul class="feature-list" style="margin-top:24px">
+            <li><span><strong>多端报修</strong> · 学生微信端 / 公寓管理员 PDA</span></li>
+            <li><span><strong>客观指标</strong> · 查寝结果绑定时间戳与拍照水印</span></li>
+            <li><span><strong>家长可见</strong> · 授权范围内可查询「寝室文明档案」</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 07. QG ============ -->
+    <section class="slide" data-title="07 · Module QG">
+      <div class="module-head reveal">
+        <div>
+          <div class="mod-code">// MODULE · QG · 5000–5099</div>
+          <h2 class="t-title m">勤工助学</h2>
+        </div>
+        <div class="mod-stats">
+          <div class="v">JOB · CLOCK · PAY</div>
+          <div class="l">// closed loop</div>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="col reveal">
+          <p class="lede">用工方发布岗位 → 学生申请 → 双向选择 → 月度考勤与报酬核对，全过程可审计。</p>
+          <ul class="feature-list" style="margin-top:24px">
+            <li><span><strong>主表</strong> · qg_position · qg_application · qg_attendance · qg_payout</span></li>
+            <li><span><strong>风控</strong> · 敏感字段 AES-256-GCM · 工资条脱敏导出</span></li>
+            <li><span><strong>合规</strong> · 每月自动生成《勤工助学工资汇总表》</span></li>
+          </ul>
+        </div>
+        <ol class="flow reveal">
+          <li class="step"><span class="step-num">01</span><div><div class="step-title">岗位发布</div><div class="step-desc">用工方填写岗位说明 / 薪酬区间 / 考核方式</div></div></li>
+          <li class="step"><span class="step-num">02</span><div><div class="step-title">学生申请</div><div class="step-desc">系统按家庭经济 / 学籍 / 课表做硬性预筛</div></div></li>
+          <li class="step"><span class="step-num">03</span><div><div class="step-title">月度考勤</div><div class="step-desc">学生扫码上下班 · 用工方在线确认</div></div></li>
+          <li class="step"><span class="step-num">04</span><div><div class="step-title">报酬核对</div><div class="step-desc">学生确认薪酬 · 财务导出月度发放表</div></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============ 08. CMP ============ -->
+    <section class="slide" data-title="08 · Module CMP">
+      <div class="module-head reveal">
+        <div>
+          <div class="mod-code">// MODULE · CMP · 6000–6099</div>
+          <h2 class="t-title m">综合素质量化</h2>
+        </div>
+        <div class="mod-stats">
+          <div class="v">4 DIMS · 12 INDICATORS</div>
+          <div class="l">// explainable</div>
+        </div>
+      </div>
+
+      <div class="three-col reveal">
+        <div class="col"><span class="tag">// DIM · 01</span><h4>思想成长</h4><p>理论学习、推优、获奖、志愿服务的加权评分；TY 事件自动同步。</p></div>
+        <div class="col"><span class="tag">// DIM · 02</span><h4>实践服务</h4><p>社团学时、勤工时长、社区贡献的时长与质量双因子；事件级溯源。</p></div>
+        <div class="col"><span class="tag">// DIM · 03</span><h4>文化体育</h4><p>校园活动参与度、比赛获奖、文艺作品入选的客观记录；带附件证据。</p></div>
+        <div class="col"><span class="tag">// DIM · 04</span><h4>日常行为</h4><p>寝室文明、上课出勤、纪律处分；SQ 事件与教务数据联合反算。</p></div>
+        <div class="col"><span class="tag">// OUTPUT</span><h4>可解释画像</h4><p>每一条得分都能点开看来源；学生可申诉，辅导员可复核。</p></div>
+        <div class="col"><span class="tag">// PIPELINE</span><h4>评奖评优</h4><p>量化结果直推 TY 推荐、奖助学金、优秀毕业生审核。</p></div>
+      </div>
+    </section>
+
+    <!-- ============ 09. STATE MACHINE ============ -->
+    <section class="slide" data-title="09 · State Machine">
+      <div class="sec-head">
+        <span class="eyebrow reveal">09 · STATEM</span>
+        <h2 class="t-title l reveal">状态机，是这套系统的<em class="t-serif">宪法</em>。</h2>
+        <p class="lede reveal">任何状态变更都通过 <code class="mono" style="color:var(--c-cyan)">statem.Apply(ctx, from, to, action, payload)</code>，业务代码不允许直接 UPDATE 状态字段。</p>
+      </div>
+
+      <table class="sm-table reveal">
+        <thead>
+          <tr>
+            <th>EVENT</th>
+            <th>FROM</th>
+            <th>ACTION</th>
+            <th>TO</th>
+            <th>GUARD</th>
+            <th>EFFECT</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>申请受理</td>
+            <td class="code">S0</td>
+            <td class="code">submit</td>
+            <td class="code">S1</td>
+            <td>年龄 14–28 · 资料齐</td>
+            <td>通知辅导员 · 写 event_log</td>
+          </tr>
+          <tr>
+            <td>推优</td>
+            <td class="code">S1</td>
+            <td class="code">recommend</td>
+            <td class="code">S2</td>
+            <td>班级到会 ≥ 2/3</td>
+            <td>自动归档会议纪要</td>
+          </tr>
+          <tr class="is-us">
+            <td>大会表决</td>
+            <td class="code">S2</td>
+            <td class="code">vote</td>
+            <td class="code">S3</td>
+            <td>实到 / 应到 ≥ 80%</td>
+            <td>逐人投票结果落库</td>
+          </tr>
+          <tr>
+            <td>公示</td>
+            <td class="code">S3</td>
+            <td class="code">publicize</td>
+            <td class="code">S4</td>
+            <td>通过公示稿模板</td>
+            <td>校内外双渠道发布</td>
+          </tr>
+          <tr>
+            <td>备案</td>
+            <td class="code">S4</td>
+            <td class="code">archive</td>
+            <td class="code">S5</td>
+            <td>无异议 · 公示期满</td>
+            <td>同步到 CMP 量化</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============ 10. SECURITY ============ -->
+    <section class="slide" data-title="10 · Security">
+      <div class="sec-head">
+        <span class="eyebrow reveal">10 · SECURITY</span>
+        <h2 class="t-title l reveal">把<em class="t-serif">安全与合规</em>做成默认值。</h2>
+        <p class="lede reveal">不是上线后再补，而是在「接口契约」与「数据库设计」阶段就被锁死。</p>
+      </div>
+
+      <div class="three-col reveal">
+        <div class="col"><span class="tag">// DATA</span><h4>字段级加密</h4><p>身份证 / 银行卡 / 家庭经济走 AES-256-GCM，密钥经环境变量注入；列表与导出按角色脱敏。</p></div>
+        <div class="col"><span class="tag">// BEHAVIOR</span><h4>全量审计</h4><p>event_log 追加写、禁物理删除；关键状态变更强制过 audit.Middleware；保留 ≥ 5 年。</p></div>
+        <div class="col"><span class="tag">// APP</span><h4>最小可见</h4><p>细粒度 RBAC，学生只看自己的、辅导员看班级的、院系副书记看全院的；默认拒绝。</p></div>
+        <div class="col"><span class="tag">// SESSION</span><h4>令牌与会话</h4><p>Access 15min + Refresh 7d HttpOnly Cookie；JWT HS256；日志禁打 token / 密码。</p></div>
+        <div class="col"><span class="tag">// FILE</span><h4>白名单上传</h4><p>MIME + 后缀双白名单、单文件 ≤ 50MB、自动重命名；图片走水印。</p></div>
+        <div class="col"><span class="tag">// DEPLOY</span><h4>密钥与配置</h4><p>.env* 不入仓；CI 注入；Dockerfile 多阶段；Nginx 反代静态资源。</p></div>
+      </div>
+    </section>
+
+    <!-- ============ 11. WHY US ============ -->
+    <section class="slide" data-title="11 · Compare">
+      <div class="sec-head">
+        <span class="eyebrow reveal">11 · WHY US</span>
+        <h2 class="t-title l reveal">和现有方案，<em class="t-serif">真的不一样</em>。</h2>
+        <p class="lede reveal">不是「又一个 OA」，也不是「在 OA 上加个学生模块」。</p>
+      </div>
+
+      <table class="sm-table reveal">
+        <thead>
+          <tr>
+            <th>DIMENSION</th>
+            <th>// TRADITIONAL OA</th>
+            <th>// SAAS</th>
+            <th>// SELF + EXCEL</th>
+            <th class="is-us">// STUDENTHUB</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>过程数据</td>
+            <td class="muted">流程节点</td>
+            <td class="muted">表单字段</td>
+            <td class="muted">Excel 汇总</td>
+            <td>事件级溯源</td>
+          </tr>
+          <tr>
+            <td>跨条线</td>
+            <td class="muted">无</td>
+            <td>单条线</td>
+            <td class="muted">手抄</td>
+            <td>五块共享身份库</td>
+          </tr>
+          <tr>
+            <td>合规审计</td>
+            <td class="muted">日志</td>
+            <td class="muted">平台私有</td>
+            <td class="muted">无</td>
+            <td>全量 event_log</td>
+          </tr>
+          <tr>
+            <td>数据归属</td>
+            <td class="muted">厂商</td>
+            <td class="muted">厂商云</td>
+            <td class="muted">本地</td>
+            <td>学校自有 · SQLite</td>
+          </tr>
+          <tr>
+            <td>上线周期</td>
+            <td>3–6 个月</td>
+            <td class="muted">1–2 月</td>
+            <td class="muted">不可量化</td>
+            <td>垂直切片 S0X</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============ 13. CODE STRUCTURE ============ -->
+    <section class="slide" data-title="12 · Codebase">
+      <div class="sec-head">
+        <span class="eyebrow reveal">12 · CODEBASE</span>
+        <h2 class="t-title l reveal">仓库长这样，<em class="t-serif">前后端单仓</em>。</h2>
+        <p class="lede reveal">11 个 Go 模块（5 业务 + IDX + 5 横切） + 16 个 TY 页面 + 11 个 CLI；每个业务模块自带 api/service/repository/statemachine 四层。</p>
+      </div>
+
+      <div class="arch-grid reveal">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// MODULES</span><span class="val">11 Go 模块</span></div>
+          <div class="item"><span class="lbl">// TY 页面</span><span class="val">16 .vue</span></div>
+          <div class="item"><span class="lbl">// CLI</span><span class="val">11 子命令</span></div>
+          <div class="item"><span class="lbl">// CI</span><span class="val">3 workflow</span></div>
+        </aside>
+        <div class="arch-canvas">
+          <div class="arch-layer">
+            <span class="layer-lbl">studenthub/</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">backend/</span>
+              <span class="chip is-soft">frontend/</span>
+              <span class="chip is-soft">docs/</span>
+              <span class="chip is-soft">deploy/</span>
+              <span class="chip is-soft">.github/workflows/</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">backend/cmd/ · 11 CLI</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">server</span>
+              <span class="chip is-soft">dbcheck / dbcheck_encoding / dbcheckmenu</span>
+              <span class="chip is-soft">seedstudent / seedall / seedst</span>
+              <span class="chip is-soft">fixactivity / fixinspbizno / renamedict / testseed</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">backend/internal/modules/ · 11 业务模块</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">ty (8 子服务)</span>
+              <span class="chip is-soft">st (association / activity / recruit)</span>
+              <span class="chip is-soft">sq (building / inspection / incident)</span>
+              <span class="chip is-soft">qg (position / attendance / difficulty / assessment / renewal)</span>
+              <span class="chip is-soft">cmp (score / rule_version / dashboard)</span>
+              <span class="chip is-soft">idx / auth / noti / file / sys / dashboard</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">frontend/src/views/ · 12 个子目录</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">ty/ 16 .vue</span>
+              <span class="chip is-soft">st/ 11 .vue</span>
+              <span class="chip is-soft">sq/ 7 .vue</span>
+              <span class="chip is-soft">qg/ 4 .vue</span>
+              <span class="chip is-soft">cmp/ 3 .vue · idx/ 3 .vue · sys/ 4 .vue</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 13b. SYSTEM ARCHITECTURE ============ -->
+    <section class="slide" data-title="12b · Architecture">
+      <div class="sec-head">
+        <span class="eyebrow reveal">12b · ARCHITECTURE</span>
+        <h2 class="t-title l reveal">系统架构，<em class="t-serif">5 层 + 4 个跨模块能力</em>。</h2>
+        <p class="lede reveal">单仓单体（Modular Monolith），模块之间只通过事件总线对话，禁止跨模块直接访问 repository。</p>
+      </div>
+
+      <div class="arch-grid reveal">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// STYLE</span><span class="val">Modular Monolith</span></div>
+          <div class="item"><span class="lbl">// BOUNDARY</span><span class="val">5 模块 · 1 IDX</span></div>
+          <div class="item"><span class="lbl">// CROSS-MOD</span><span class="val">eventx · statem</span></div>
+          <div class="item"><span class="lbl">// TRANSACT</span><span class="val">Saga / 事件补偿</span></div>
+        </aside>
+        <div class="arch-canvas">
+          <div class="arch-layer">
+            <span class="layer-lbl">L1 · 接入层</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">Gin Router</span>
+              <span class="chip is-soft">RequestID</span>
+              <span class="chip is-soft">CORS</span>
+              <span class="chip is-soft">Logger (zap)</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">L2 · 鉴权层</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-amber">Auth · JWT 解析</span>
+              <span class="chip is-amber">RBAC · 角色解析</span>
+              <span class="chip is-amber">audit.Middleware</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">L3 · API 层</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip">/ty/applications</span>
+              <span class="chip">/st/activities</span>
+              <span class="chip">/sq/dorms</span>
+              <span class="chip">/qg/positions</span>
+              <span class="chip">/cmp/scores</span>
+              <span class="chip">/idx/students</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">L4 · 业务层</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-accent">statem.Apply()</span>
+              <span class="chip is-accent">eventx.Publish()</span>
+              <span class="chip is-accent">Guard / Effect</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">L5 · 数据层</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">GORM Repo</span>
+              <span class="chip is-soft">SQLite (WAL)</span>
+              <span class="chip is-soft">pkg/cryptox</span>
+              <span class="chip is-soft">pkg/cachex (LRU)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 13c. BOOT &amp; MIDDLEWARE CHAIN ============ -->
+    <section class="slide" data-title="12c · Boot">
+      <div class="sec-head">
+        <span class="eyebrow reveal">12c · BOOT SEQUENCE</span>
+        <h2 class="t-title l reveal">启动顺序 + 中间件链，<em class="t-serif">从 main.go 到 200 OK</em>。</h2>
+        <p class="lede reveal">`cmd/server/main.go` 调 `internal/boot` 完成装配：配置 → 日志 → DB → 迁移 → 状态机注册 → 路由 → 监听。</p>
+      </div>
+
+      <div class="arch-grid reveal">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// ENTRY</span><span class="val">cmd/server/main.go</span></div>
+          <div class="item"><span class="lbl">// WIRING</span><span class="val">internal/boot</span></div>
+          <div class="item"><span class="lbl">// LISTEN</span><span class="val">:8088</span></div>
+        </aside>
+        <div style="font-family:var(--font-mono);font-size:11px;line-height:1.7;background:var(--bg-1);border:1px solid var(--line);padding:18px;color:var(--ink-2);overflow:auto">
+<span style="color:var(--ink-3)">// 中间件链（请求从外到内）</span><br/>
+<span style="color:var(--c-cyan)">router.Use</span>(<br/>
+&nbsp;&nbsp;middleware.RequestID(),  <span style="color:var(--ink-3)">// 生成 / 透传 X-Request-ID</span><br/>
+&nbsp;&nbsp;middleware.Recovery(),   <span style="color:var(--ink-3)">// panic → 500 + request_id</span><br/>
+&nbsp;&nbsp;middleware.Logger(zap.L),<span style="color:var(--ink-3)">// zap 结构化日志</span><br/>
+&nbsp;&nbsp;middleware.CORS(),       <span style="color:var(--ink-3)">// 允许前端 :5173</span><br/>
+&nbsp;&nbsp;middleware.Limit(5MB),   <span style="color:var(--ink-3)">// body 大小限制</span><br/>
+)<br/>
+<br/>
+<span style="color:var(--ink-3)">// 业务路由按模块分组，单独挂鉴权</span><br/>
+<span style="color:var(--c-cyan)">api := router.Group</span>(<span style="color:var(--c-amber)">"/api/v1"</span>)<br/>
+api.Use(middleware.AuthJWT())      <span style="color:var(--ink-3)">// 全局 JWT 解析</span><br/>
+api.Use(middleware.RBAC(...))      <span style="color:var(--ink-3)">// 从 JWT 取角色 → 菜单</span><br/>
+<br/>
+ty := api.Group(<span style="color:var(--c-amber)">"/ty"</span>)<br/>
+ty.Use(middleware.Audit(<span style="color:var(--c-amber)">"ty"</span>)) <span style="color:var(--ink-3)">// 关键动作入审计</span><br/>
+ty.POST(<span style="color:var(--c-amber)">"/applications/:id/submit"</span>,  handler.Submit)<br/>
+ty.POST(<span style="color:var(--c-amber)">"/applications/:id/approve"</span>, handler.Approve)<br/>
+ty.POST(<span style="color:var(--c-amber)">"/applications/:id/vote"</span>,    handler.Vote)<br/>
+<br/>
+<span style="color:var(--ink-3)">// 启动时一次性装配</span><br/>
+boot.Assemble(deps {<br/>
+&nbsp;&nbsp;Config:   viper.GetViper(),<br/>
+&nbsp;&nbsp;Logger:    zap.L,<br/>
+&nbsp;&nbsp;DB:        sqlite.OpenWAL(<span style="color:var(--c-amber)">"data/studenthub.db"</span>),<br/>
+&nbsp;&nbsp;Statem:    statem.New(),<br/>
+&nbsp;&nbsp;EventBus:  eventx.NewInProc(),<br/>
+&nbsp;&nbsp;Modules:   []Module{auth, idx, ty, st, sq, qg, cmp, noti},<br/>
+})
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 14. TY · ACTUAL CODE ============ -->
+    <section class="slide" data-title="13 · TY Code">
+      <div class="sec-head">
+        <span class="eyebrow reveal">13 · MODULE · TY · 真实代码</span>
+        <h2 class="t-title l reveal">一个 Service 层，<em class="t-serif">看完整链路</em>。</h2>
+        <p class="lede reveal">`ty/application` 模块：API 接收请求 → Service 调 statem.Apply() → Repo 落库 → eventx 发事件 → 写审计日志。</p>
+      </div>
+
+      <div class="split">
+        <div class="col reveal">
+          <div style="font-family:var(--font-mono);font-size:11px;line-height:1.7;background:var(--bg-1);border:1px solid var(--line);padding:18px;color:var(--ink-2);overflow:hidden">
+<span style="color:var(--ink-3)">// internal/modules/ty/service/application_service.go</span><br/>
+<span style="color:var(--c-cyan)">func</span> (s *Service) Submit(ctx context.Context, in SubmitInput) (<span style="color:var(--c-cyan)">error</span>) {<br/>
+&nbsp;&nbsp;student, err := s.idx.GetByID(ctx, in.StudentID)<br/>
+&nbsp;&nbsp;<span style="color:var(--c-cyan)">if</span> err != nil { <span style="color:var(--c-cyan)">return</span> fmt.Errorf(<span style="color:var(--c-amber)">"idempotent: %w"</span>, err) }<br/>
+&nbsp;&nbsp;<span style="color:var(--ink-3)">// 1) 守卫：年龄 14–28 / 资料齐 / 班级归属</span><br/>
+&nbsp;&nbsp;<span style="color:var(--c-cyan)">if</span> !s.guard.AgeInRange(student, <span style="color:var(--c-amber)">14</span>, <span style="color:var(--c-amber)">28</span>) {<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--c-cyan)">return</span> apperr.New(<span style="color:var(--c-amber)">2401</span>, <span style="color:var(--c-amber)">"TY.APPLICATION.AGE_OUT_OF_RANGE"</span>)<br/>
+&nbsp;&nbsp;}<br/>
+&nbsp;&nbsp;<span style="color:var(--ink-3)">// 2) 状态机：S0 → S1</span><br/>
+&nbsp;&nbsp;<span style="color:var(--c-cyan)">if</span> err := s.statem.Apply(ctx, statem.ApplyParams{</span><br/>
+<span style="color:var(--ink-3)">　　... 节选自真实代码片段 ...</span>
+          </div>
+        </div>
+        <div class="col reveal">
+          <ol class="flow">
+            <li class="step"><span class="step-num">L1</span><div><div class="step-title">API 层 · Gin Handler</div><div class="step-desc">绑定 DTO / 调中间件 / 返回统一响应包</div></div></li>
+            <li class="step"><span class="step-num">L2</span><div><div class="step-title">Service 层 · 业务编排</div><div class="step-desc">守卫 → 状态机 → 事件 → 审计 → 返回</div></div></li>
+            <li class="step"><span class="step-num">L3</span><div><div class="step-title">Repository 层 · GORM</div><div class="step-desc">纯 SQL 映射 / 软删过滤 / 索引命中</div></div></li>
+            <li class="step"><span class="step-num">L4</span><div><div class="step-title">Model 层 · 结构体</div><div class="step-desc">gorm / json tag 与 SSOT 文档逐字段对齐</div></div></li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 15. STATEM ENGINE ============ -->
+    <section class="slide" data-title="14 · Statem">
+      <div class="sec-head">
+        <span class="eyebrow reveal">14 · STATEM ENGINE</span>
+        <h2 class="t-title l reveal">状态机引擎，<em class="t-serif">集中定义</em>。</h2>
+        <p class="lede reveal">所有业务模块的 from→to 转换都注册在 statem 包里，避免散落在 Service 各处。</p>
+      </div>
+
+      <div class="arch-grid reveal">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// FILE</span><span class="val">internal/statem</span></div>
+          <div class="item"><span class="lbl">// CORE</span><span class="val">Apply() / Guard() / Effect()</span></div>
+          <div class="item"><span class="lbl">// AUDIT</span><span class="val">event_log · append-only</span></div>
+        </aside>
+        <div style="font-family:var(--font-mono);font-size:11px;line-height:1.7;background:var(--bg-1);border:1px solid var(--line);padding:18px;color:var(--ink-2)">
+<span style="color:var(--ink-3)">// internal/statem/ty_application.go</span><br/>
+<span style="color:var(--c-cyan)">var</span> TyApplicationTransitions = []Transition{<br/>
+&nbsp;&nbsp;{From: <span style="color:var(--c-amber)">"S0"</span>, To: <span style="color:var(--c-amber)">"S1"</span>, Action: <span style="color:var(--c-amber)">"submit"</span>,<br/>
+&nbsp;&nbsp;&nbsp;Guard: AgeInRange(<span style="color:var(--c-amber)">14</span>, <span style="color:var(--c-amber)">28</span>),<br/>
+&nbsp;&nbsp;&nbsp;Effect: []Effect{NotifyCousellor, WriteEventLog}},<br/>
+&nbsp;&nbsp;{From: <span style="color:var(--c-amber)">"S1"</span>, To: <span style="color:var(--c-amber)">"S2"</span>, Action: <span style="color:var(--c-amber)">"recommend"</span>,<br/>
+&nbsp;&nbsp;&nbsp;Guard: AttendeeRateGTE(<span style="color:var(--c-amber)">2.0</span>/<span style="color:var(--c-amber)">3.0</span>), Effect: ArchiveMeetingNote},<br/>
+&nbsp;&nbsp;{From: <span style="color:var(--c-amber)">"S2"</span>, To: <span style="color:var(--c-amber)">"S3"</span>, Action: <span style="color:var(--c-amber)">"vote"</span>,<br/>
+&nbsp;&nbsp;&nbsp;Guard: ActualVsExpectedGTE(<span style="color:var(--c-amber)">0.8</span>), Effect: PersistBallot},<br/>
+&nbsp;&nbsp;{From: <span style="color:var(--c-amber)">"S3"</span>, To: <span style="color:var(--c-amber)">"S4"</span>, Action: <span style="color:var(--c-amber)">"publicize"</span>,<br/>
+&nbsp;&nbsp;&nbsp;Guard: PassTemplate, Effect: DualChannelPublish},<br/>
+&nbsp;&nbsp;{From: <span style="color:var(--c-amber)">"S4"</span>, To: <span style="color:var(--c-amber)">"S5"</span>, Action: <span style="color:var(--c-amber)">"archive"</span>,<br/>
+&nbsp;&nbsp;&nbsp;Guard: NoComplaint, Effect: SyncToCMP},<br/>
+}<br/>
+<br/>
+<span style="color:var(--ink-3)">// 任何 Service 只能通过 statem.Apply() 走转换</span><br/>
+<span style="color:var(--ink-3)">// 禁止业务代码直接 UPDATE status = ?</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 16. DATABASE OVERVIEW ============ -->
+    <section class="slide" data-title="15 · Database">
+      <div class="sec-head">
+        <span class="eyebrow reveal">15 · DATABASE · 总览</span>
+        <h2 class="t-title l reveal">22 张业务表 + 9 张系统表，<em class="t-serif">全 31 张</em>。</h2>
+        <p class="lede reveal">所有表 / 字段 / 索引 / 外键以 [`docs/03_database_design_spec.md`](/docs/03_database_design_spec.md) 为唯一事实来源；GORM tag 逐字段对齐，不允许私自增减列。</p>
+      </div>
+
+      <div class="three-col reveal">
+        <div class="col"><span class="tag">// IDX · 3</span><h4>idx_student / idx_class / idx_tag</h4><p>身份库是五块业务唯一入口；`idx_student` 走学号唯一 + 身份证 AES-GCM 密文列。</p></div>
+        <div class="col"><span class="tag">// TY · 3</span><h4>ty_application / ty_development_meeting / ty_publicity</h4><p>9 状态机主表 + 大会表决表 + 公示期快照表；每一步都落库可回放。</p></div>
+        <div class="col"><span class="tag">// ST · 4</span><h4>st_club / st_activity / st_signin / st_member</h4><p>社团主表 + 活动表 + 现场签到明细 + 成员表；活动照片走 file_id 外键引用。</p></div>
+        <div class="col"><span class="tag">// SQ · 4</span><h4>sq_dorm / sq_bed / sq_transfer / sq_repair</h4><p>寝室主表 + 床位表 + 调宿流水 + 报修工单；查寝结果带 GPS 水印图。</p></div>
+        <div class="col"><span class="tag">// QG · 4</span><h4>qg_position / qg_apply / qg_attendance / qg_payout</h4><p>岗位 + 申请 + 月度考勤 + 报酬发放；身份证 / 银行卡 / 家庭经济情况走加密列。</p></div>
+        <div class="col"><span class="tag">// CMP · 4</span><h4>cmp_dimension / cmp_score_event / cmp_semester / cmp_appeal</h4><p>维度字典 + 得分事件 + 学期汇总 + 申诉记录；每条得分都是一条可追溯事件。</p></div>
+      </div>
+
+      <div class="arch-grid reveal" style="margin-top:24px">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// TOTAL</span><span class="val">31 张</span></div>
+          <div class="item"><span class="lbl">// BIZ</span><span class="val">22 业务</span></div>
+          <div class="item"><span class="lbl">// SYS</span><span class="val">9 系统</span></div>
+          <div class="item"><span class="lbl">// INDEX</span><span class="val">~ 80</span></div>
+        </aside>
+        <div class="arch-canvas">
+          <div class="arch-layer">
+            <span class="layer-lbl">业务表 · 22 张（5 模块）</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">IDX · 3</span>
+              <span class="chip is-soft">TY · 3</span>
+              <span class="chip is-soft">ST · 4</span>
+              <span class="chip is-soft">SQ · 4</span>
+              <span class="chip is-soft">QG · 4</span>
+              <span class="chip is-soft">CMP · 4</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">系统表 · 9 张（auth / noti / file / sys）</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">sys_user / sys_role / sys_permission</span>
+              <span class="chip is-soft">sys_dict / sys_config</span>
+              <span class="chip is-soft">noti_message / noti_subscription</span>
+              <span class="chip is-soft">file_object</span>
+              <span class="chip is-soft">event_log · append-only</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">通用字段 · 每张业务表必备</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">id · INTEGER PK AUTOINCREMENT</span>
+              <span class="chip is-soft">created_at / updated_at · DATETIME</span>
+              <span class="chip is-soft">created_by / updated_by · INTEGER</span>
+              <span class="chip is-soft">is_deleted · 0/1 软删</span>
+              <span class="chip is-soft">biz_no · 业务编号 UK</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 16b. IDX DETAIL ============ -->
+    <section class="slide" data-title="15b · IDX Tables">
+      <div class="sec-head">
+        <span class="eyebrow reveal">15b · DATABASE · IDX</span>
+        <h2 class="t-title l reveal">身份库：<em class="t-serif">同一个人，全校一个 ID</em>。</h2>
+        <p class="lede reveal">`idx_student` 是五块业务唯一身份来源；`idx_class` 走树形 + 自关联，支持学院 / 专业 / 年级 / 班级四级。</p>
+      </div>
+
+      <div class="arch-grid reveal">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// TABLES</span><span class="val">3 张</span></div>
+          <div class="item"><span class="lbl">// UNIQUE</span><span class="val">student_no · uk</span></div>
+          <div class="item"><span class="lbl">// RELATION</span><span class="val">5 模块 → idx_student</span></div>
+        </aside>
+        <div style="font-family:var(--font-mono);font-size:11px;line-height:1.7;background:var(--bg-1);border:1px solid var(--line);padding:18px;color:var(--ink-2);overflow:auto">
+<span style="color:var(--ink-3)">// idx_student · 学生主表</span><br/>
+<span style="color:var(--c-cyan)">CREATE TABLE</span> idx_student (<br/>
+&nbsp;&nbsp;id              INTEGER PRIMARY KEY AUTOINCREMENT,<br/>
+&nbsp;&nbsp;student_no      <span style="color:var(--c-cyan)">VARCHAR</span>(32)  <span style="color:var(--c-cyan)">NOT NULL UNIQUE</span>,  <span style="color:var(--ink-3)">-- 学号</span><br/>
+&nbsp;&nbsp;name            <span style="color:var(--c-cyan)">VARCHAR</span>(64)  <span style="color:var(--c-cyan)">NOT NULL</span>,<br/>
+&nbsp;&nbsp;id_card_enc     <span style="color:var(--c-cyan)">BLOB</span>          <span style="color:var(--c-cyan)">NOT NULL</span>,  <span style="color:var(--ink-3)">-- AES-GCM 密文</span><br/>
+&nbsp;&nbsp;gender          <span style="color:var(--c-cyan)">TINYINT</span>,<br/>
+&nbsp;&nbsp;birth_date      <span style="color:var(--c-cyan)">DATE</span>,<br/>
+&nbsp;&nbsp;class_id        INTEGER <span style="color:var(--c-cyan)">REFERENCES</span> idx_class(id),<br/>
+&nbsp;&nbsp;enroll_year     <span style="color:var(--c-cyan)">SMALLINT</span>,<br/>
+&nbsp;&nbsp;status          <span style="color:var(--c-cyan)">VARCHAR</span>(16)  DEFAULT <span style="color:var(--c-amber)">'ENROLLED'</span>,<br/>
+&nbsp;&nbsp;created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,<br/>
+&nbsp;&nbsp;updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,<br/>
+&nbsp;&nbsp;is_deleted      INTEGER  DEFAULT 0<br/>
+);<br/>
+<span style="color:var(--c-cyan)">CREATE INDEX</span> idx_idx_student_class <span style="color:var(--c-cyan)">ON</span> idx_student(class_id);<br/>
+<span style="color:var(--c-cyan)">CREATE INDEX</span> idx_idx_student_year  <span style="color:var(--c-cyan)">ON</span> idx_student(enroll_year);<br/>
+<br/>
+<span style="color:var(--ink-3)">// idx_class · 班级树（学院 / 专业 / 年级 / 班级）</span><br/>
+<span style="color:var(--c-cyan)">CREATE TABLE</span> idx_class (<br/>
+&nbsp;&nbsp;id              INTEGER PRIMARY KEY AUTOINCREMENT,<br/>
+&nbsp;&nbsp;name            <span style="color:var(--c-cyan)">VARCHAR</span>(64)  <span style="color:var(--c-cyan)">NOT NULL</span>,<br/>
+&nbsp;&nbsp;parent_id       INTEGER <span style="color:var(--c-cyan)">REFERENCES</span> idx_class(id),<br/>
+&nbsp;&nbsp;level           <span style="color:var(--c-cyan)">TINYINT</span>      <span style="color:var(--ink-3)">-- 1学院 2专业 3年级 4班级</span><br/>
+);<br/>
+<br/>
+<span style="color:var(--ink-3)">// idx_tag · 学生标签（灵活扩展：困难生 / 港澳生 / 退役士兵）</span><br/>
+<span style="color:var(--c-cyan)">CREATE TABLE</span> idx_tag (<br/>
+&nbsp;&nbsp;id INTEGER PRIMARY KEY,<br/>
+&nbsp;&nbsp;student_id INTEGER <span style="color:var(--c-cyan)">REFERENCES</span> idx_student(id),<br/>
+&nbsp;&nbsp;tag_key   <span style="color:var(--c-cyan)">VARCHAR</span>(32),<br/>
+&nbsp;&nbsp;tag_value <span style="color:var(--c-cyan)">VARCHAR</span>(64)<br/>
+);<br/>
+<span style="color:var(--c-cyan)">CREATE INDEX</span> idx_idx_tag_student <span style="color:var(--c-cyan)">ON</span> idx_tag(student_id);
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 16c. TY DETAIL ============ -->
+    <section class="slide" data-title="15c · TY Tables">
+      <div class="sec-head">
+        <span class="eyebrow reveal">15c · DATABASE · TY</span>
+        <h2 class="t-title l reveal">团员发展：<em class="t-serif">9 状态机 + 大会表</em>。</h2>
+        <p class="lede reveal">`ty_application` 走完整状态机；`ty_development_meeting` 单独建表存发展大会到会率 / 表决结果，支持家长开放日一键回放。</p>
+      </div>
+
+      <div class="arch-grid reveal">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// TABLES</span><span class="val">2 张</span></div>
+          <div class="item"><span class="lbl">// STATE</span><span class="val">S0–S8 · 9 节点</span></div>
+          <div class="item"><span class="lbl">// UNIQUE</span><span class="val">biz_no · TY-2026-0001</span></div>
+          <div class="item"><span class="lbl">// FK</span><span class="val">student_id → idx_student</span></div>
+        </aside>
+        <div style="font-family:var(--font-mono);font-size:11px;line-height:1.7;background:var(--bg-1);border:1px solid var(--line);padding:18px;color:var(--ink-2);overflow:auto">
+<span style="color:var(--ink-3)">// ty_application · 申请人主表（9 状态机）</span><br/>
+<span style="color:var(--c-cyan)">CREATE TABLE</span> ty_application (<br/>
+&nbsp;&nbsp;id              INTEGER PRIMARY KEY AUTOINCREMENT,<br/>
+&nbsp;&nbsp;biz_no          <span style="color:var(--c-cyan)">VARCHAR</span>(32)  <span style="color:var(--c-cyan)">NOT NULL UNIQUE</span>,  <span style="color:var(--ink-3)">-- TY-2026-0001</span><br/>
+&nbsp;&nbsp;student_id      INTEGER  <span style="color:var(--c-cyan)">NOT NULL REFERENCES</span> idx_student(id),<br/>
+&nbsp;&nbsp;status          <span style="color:var(--c-cyan)">VARCHAR</span>(4)   <span style="color:var(--c-cyan)">NOT NULL DEFAULT</span> <span style="color:var(--c-amber)">'S0'</span>,  <span style="color:var(--ink-3)">-- S0–S8</span><br/>
+&nbsp;&nbsp;apply_type      <span style="color:var(--c-cyan)">VARCHAR</span>(16)  <span style="color:var(--c-cyan)">NOT NULL</span>,  <span style="color:var(--ink-3)">-- 推荐 / 自荐</span><br/>
+&nbsp;&nbsp;introducer_id   INTEGER  <span style="color:var(--c-cyan)">REFERENCES</span> idx_student(id),<br/>
+&nbsp;&nbsp;counsellor_id   INTEGER,  <span style="color:var(--ink-3)">-- 辅导员</span><br/>
+&nbsp;&nbsp;branch_id       INTEGER,  <span style="color:var(--ink-3)">-- 所属团支部</span><br/>
+&nbsp;&nbsp;submit_at       DATETIME,<br/>
+&nbsp;&nbsp;recommend_at    DATETIME,<br/>
+&nbsp;&nbsp;vote_at         DATETIME,<br/>
+&nbsp;&nbsp;publicize_start DATETIME,<br/>
+&nbsp;&nbsp;publicize_end   DATETIME,<br/>
+&nbsp;&nbsp;archive_at      DATETIME,<br/>
+&nbsp;&nbsp;reject_reason   <span style="color:var(--c-cyan)">VARCHAR</span>(255),<br/>
+&nbsp;&nbsp;created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,<br/>
+&nbsp;&nbsp;updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,<br/>
+&nbsp;&nbsp;created_by      INTEGER,<br/>
+&nbsp;&nbsp;updated_by      INTEGER,<br/>
+&nbsp;&nbsp;is_deleted      INTEGER  DEFAULT 0<br/>
+);<br/>
+<span style="color:var(--c-cyan)">CREATE INDEX</span> idx_ty_app_student_status <span style="color:var(--c-cyan)">ON</span> ty_application(student_id, status);<br/>
+<span style="color:var(--c-cyan)">CREATE INDEX</span> idx_ty_app_branch        <span style="color:var(--c-cyan)">ON</span> ty_application(branch_id);<br/>
+<br/>
+<span style="color:var(--ink-3)">// ty_development_meeting · 发展大会</span><br/>
+<span style="color:var(--c-cyan)">CREATE TABLE</span> ty_development_meeting (<br/>
+&nbsp;&nbsp;id              INTEGER PRIMARY KEY,<br/>
+&nbsp;&nbsp;application_id  INTEGER <span style="color:var(--c-cyan)">REFERENCES</span> ty_application(id),<br/>
+&nbsp;&nbsp;meeting_at      DATETIME <span style="color:var(--c-cyan)">NOT NULL</span>,<br/>
+&nbsp;&nbsp;location        <span style="color:var(--c-cyan)">VARCHAR</span>(128),<br/>
+&nbsp;&nbsp;expected_count  INTEGER <span style="color:var(--c-cyan)">NOT NULL</span>,  <span style="color:var(--ink-3)">-- 应到</span><br/>
+&nbsp;&nbsp;actual_count    INTEGER <span style="color:var(--c-cyan)">NOT NULL</span>,  <span style="color:var(--ink-3)">-- 实到</span><br/>
+&nbsp;&nbsp;agree_count     INTEGER,  <span style="color:var(--ink-3)">-- 同意</span><br/>
+&nbsp;&nbsp;disagree_count  INTEGER,  <span style="color:var(--ink-3)">-- 不同意</span><br/>
+&nbsp;&nbsp;abstain_count   INTEGER,  <span style="color:var(--ink-3)">-- 弃权</span><br/>
+&nbsp;&nbsp;attendee_rate   <span style="color:var(--c-cyan)">DECIMAL</span>(4,3),  <span style="color:var(--ink-3)">-- 0.667 软卡控</span><br/>
+&nbsp;&nbsp;pass_rate       <span style="color:var(--c-cyan)">DECIMAL</span>(4,3),  <span style="color:var(--ink-3)">-- 同意 / 实到</span><br/>
+&nbsp;&nbsp;note_file_id    INTEGER <span style="color:var(--c-cyan)">REFERENCES</span> file(id),  <span style="color:var(--ink-3)">-- 会议纪要</span><br/>
+&nbsp;&nbsp;ballot_file_id  INTEGER <br/>
+);<br/>
+<span style="color:var(--c-cyan)">CREATE INDEX</span> idx_ty_meeting_app <span style="color:var(--c-cyan)">ON</span> ty_development_meeting(application_id);
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 17. FRONTEND ============ -->
+    <section class="slide" data-title="16 · Frontend">
+      <div class="sec-head">
+        <span class="eyebrow reveal">16 · FRONTEND</span>
+        <h2 class="t-title l reveal">前端：<em class="t-serif">Vue 3 + Element Plus</em>。</h2>
+        <p class="lede reveal">`src/api` 14 个模块文件 + `src/views` 12 个子目录 60+ .vue + 3 个 Pinia store + 6 个通用组件；路由 meta 带 RBAC 权限。</p>
+      </div>
+
+      <div class="arch-grid reveal">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// FRAMEWORK</span><span class="val">Vue 3.5 · &lt;script setup&gt;</span></div>
+          <div class="item"><span class="lbl">// UI</span><span class="val">Element Plus 2.8+</span></div>
+          <div class="item"><span class="lbl">// STATE</span><span class="val">Pinia 3 · 禁 Vuex</span></div>
+          <div class="item"><span class="lbl">// ROUTER</span><span class="val">vue-router 4 + meta RBAC</span></div>
+        </aside>
+        <div class="arch-canvas">
+          <div class="arch-layer">
+            <span class="layer-lbl">src/api · 14 个模块</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">auth / ty / st / sq / qg / cmp / idx</span>
+              <span class="chip is-soft">sys / sys-org / notification / file</span>
+              <span class="chip is-soft">dashboard / job / http</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">src/views · 60+ .vue</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">ty/ 16</span>
+              <span class="chip is-soft">st/ 11</span>
+              <span class="chip is-soft">sq/ 7</span>
+              <span class="chip is-soft">qg/ 4</span>
+              <span class="chip is-soft">cmp/ 3 · idx/ 3 · sys/ 4</span>
+              <span class="chip is-soft">notifications/ 1</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">src/components · 6 通用</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">ApprovalDialog</span>
+              <span class="chip is-soft">ApprovalTimeline</span>
+              <span class="chip is-soft">DevelopmentTrack</span>
+              <span class="chip is-soft">DictSelect · LevelBadge · UploadFile</span>
+            </div>
+          </div>
+          <div class="arch-layer">
+            <span class="layer-lbl">src/stores · 3 Pinia</span>
+            <div class="layer-blocks" style="font-family:var(--font-mono);font-size:11px;color:var(--ink-3)">
+              <span class="chip is-soft">useAuthStore</span>
+              <span class="chip is-soft">useMenuStore</span>
+              <span class="chip is-soft">useDictStore</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 18. UI MOCKS ============ -->
+    <section class="slide" data-title="17 · UI Mocks">
+      <div class="sec-head">
+        <span class="eyebrow reveal">17 · UI MOCKS</span>
+        <h2 class="t-title l reveal">关键页面，<em class="t-serif">已落地</em>。</h2>
+        <p class="lede reveal">Element Plus 标准组件拼装，不做花哨定制；以「表格 + 详情面板 + 时间线」为主交互范式。</p>
+      </div>
+
+      <div class="split reveal">
+        <div class="col">
+          <h3>申请详情 · TY</h3>
+          <p class="lede">顶部 9 节点进度条；下方分 Tab：基本信息 / 推优材料 / 大会表决 / 公示截图 / 审计日志。</p>
+          <ul class="feature-list" style="margin-top:18px">
+            <li><span><strong>时间线</strong> · event_log 自动按时间倒序</span></li>
+            <li><span><strong>附件</strong> · 推优票 / 公示照片 / 表决票均带水印</span></li>
+            <li><span><strong>动作按钮</strong> · 随状态机动态显隐，不可点状态灰显</span></li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3>量化画像 · CMP</h3>
+          <p class="lede">四维度雷达图 + 得分明细表；每条得分能点开看来源事件。</p>
+          <ul class="feature-list" style="margin-top:18px">
+            <li><span><strong>申诉入口</strong> · 学生对单条得分发起申诉</span></li>
+            <li><span><strong>复核</strong> · 辅导员可加 / 减 / 备注</span></li>
+            <li><span><strong>贯通</strong> · 量化结果直推评奖评优审核流</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 19. RUN LOCALLY ============ -->
+    <section class="slide" data-title="18 · Run">
+      <div class="sec-head">
+        <span class="eyebrow reveal">18 · RUN LOCALLY</span>
+        <h2 class="t-title l reveal">本地跑起来，<em class="t-serif">一条命令</em>。</h2>
+        <p class="lede reveal">后端 Go 单进程起 SQLite，前端 Vite 起 dev server，两个端口互相对接即可。</p>
+      </div>
+
+      <div class="arch-grid reveal">
+        <aside class="arch-side">
+          <div class="item"><span class="lbl">// BACKEND</span><span class="val">:8088</span></div>
+          <div class="item"><span class="lbl">// FRONTEND</span><span class="val">:5173</span></div>
+          <div class="item"><span class="lbl">// SQLITE</span><span class="val">backend/data/studenthub.db</span></div>
+        </aside>
+        <div style="font-family:var(--font-mono);font-size:12px;line-height:1.7;background:var(--bg-1);border:1px solid var(--line);padding:20px;color:var(--ink-2)">
+<span style="color:var(--ink-3)"># 1. 起后端（自动迁移 + 注入种子数据）</span><br/>
+<span style="color:var(--c-cyan)">$</span> cd backend<br/>
+<span style="color:var(--c-cyan)">$</span> go run cmd/server/main.go<br/>
+<span style="color:var(--ink-3)">  [boot] migrate: 12 tables · ok</span><br/>
+<span style="color:var(--ink-3)">  [boot] seed: 87 students · 5 classes · ok</span><br/>
+<span style="color:var(--ink-3)">  [boot] listen :8088</span><br/>
+<br/>
+<span style="color:var(--ink-3)"># 2. 起前端</span><br/>
+<span style="color:var(--c-cyan)">$</span> cd frontend<br/>
+<span style="color:var(--c-cyan)">$</span> pnpm install && pnpm dev<br/>
+<span style="color:var(--ink-3)">  vite ready in 412ms</span><br/>
+<span style="color:var(--ink-3)">  ➜  Local:   http://localhost:5173/</span><br/>
+<br/>
+<span style="color:var(--ink-3)"># 3. 烟测一条 API</span><br/>
+<span style="color:var(--c-cyan)">$</span> curl -X POST localhost:8088/api/v1/auth/login \<br/>
+&nbsp;&nbsp;-H <span style="color:var(--c-amber)">'Content-Type: application/json'</span> \<br/>
+&nbsp;&nbsp;-d <span style="color:var(--c-amber)">'{"username":"admin","password":"admin"}'</span><br/>
+<span style="color:var(--ink-3)">  {"code":0,"data":{"access_token":"eyJ..."}}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 20. TEST ============ -->
+    <section class="slide" data-title="19 · Test">
+      <div class="sec-head">
+        <span class="eyebrow reveal">19 · TEST</span>
+        <h2 class="t-title l reveal">测试与质量门禁，<em class="t-serif">提交前必跑</em>。</h2>
+        <p class="lede reveal">后端 Service 单测覆盖 ≥ 70%；前端 Vitest + ESLint；CI 上跑完整链路。</p>
+      </div>
+
+      <div class="three-col reveal">
+        <div class="col"><span class="tag">// BACKEND</span><h4>go test ./...</h4><p>模块核心 Service 用表驱动测；状态机每个 Guard 至少 1 个用例；竞态用 -race 检测。</p></div>
+        <div class="col"><span class="tag">// LINT</span><h4>golangci-lint</h4><p>go vet · staticcheck · errcheck · ineffassign · revive；圈复杂度 ≤ 20。</p></div>
+        <div class="col"><span class="tag">// FRONTEND</span><h4>pnpm lint &amp;&amp; pnpm build</h4><p>ESLint + Prettier；Vitest 跑关键组件；构建产物 ≤ 500KB gzipped。</p></div>
+        <div class="col"><span class="tag">// CONTRACT</span><h4>API 契约对齐</h4><p>后端响应字段与 [`docs/04_SRD_api_specifications.md`](/docs/04_SRD_api_specifications.md) 一一对照。</p></div>
+        <div class="col"><span class="tag">// E2E</span><h4>curl 烟测脚本</h4><p>backend/data/verify_*.ps1 覆盖核心 12 个 API；PR 合入前必过。</p></div>
+        <div class="col"><span class="tag">// GATE</span><h4>PR ≥ 1 评审</h4><p>同模块同事 + TL 双评；单 PR 净增 ≤ 600 行；Conventional Commits。</p></div>
+      </div>
+    </section>
+
+    <!-- ============ 21. OPEN ISSUES ============ -->
+    <section class="slide" data-title="20 · Open Issues">
+      <div class="sec-head">
+        <span class="eyebrow reveal">20 · TODO</span>
+        <h2 class="t-title l reveal">已知的坑，<em class="t-serif">不藏</em>。</h2>
+        <p class="lede reveal">实地跑通发现的：以下 6 处是当前阶段的妥协，也是本学期冲刺方向。</p>
+      </div>
+
+      <ol class="flow reveal">
+        <li class="step"><span class="step-num">T1</span><div><div class="step-title">SQLite 并发写</div><div class="step-desc">WAL 模式 + 单写者，目前够用；用户数上 200 后考虑切到单实例 MySQL。</div></div></li>
+        <li class="step"><span class="step-num">T2</span><div><div class="step-title">文件存储</div><div class="step-desc">本地 volume，Nginx 直接 serve；下学期抽到 S3 兼容对象存储。</div></div></li>
+        <li class="step"><span class="step-num">T3</span><div><div class="step-title">CMP 权重可视化</div><div class="step-desc">当前权重写死在配置；下一版做"维度权重可视化配置页" + rule_version 表已就位。</div></div></li>
+        <li class="step"><span class="step-num">T4</span><div><div class="step-title">中文 / 字典乱码</div><div class="step-desc">已写 `cmd/dbcheck_encoding` + `renamedict` 跑过修复；上游 MySQL 导入仍需做 encoding 转换工具。</div></div></li>
+        <li class="step"><span class="step-num">T5</span><div><div class="step-title">招新 / 活动一体化</div><div class="step-desc">ST 招新计划（recruit_plan）+ 活动（activity）目前各自有状态机；后续合并到统一活动流。</div></div></li>
+        <li class="step"><span class="step-num">T6</span><div><div class="step-title">家长端 H5</div><div class="step-desc">暂未做；下一版用 uni-app 起一个 H5，先跑通"寝室文明档案可见"。</div></div></li>
+      </ol>
+    </section>
+
+    <!-- ============ 22. SUMMARY ============ -->
+    <section class="slide quote" data-title="21 · Summary">
+      <div class="quote-grid">
+        <span class="eyebrow reveal">21 · SUMMARY</span>
+        <blockquote class="reveal">
+          不是要替换 OA，<br/>
+          是要给<em>校园学生工作</em><br/>
+          <em>一个自己的过程档案</em>。
+        </blockquote>
+        <p class="cite reveal">// STUDENTHUB · v1.0 · 2026 SPRING</p>
+      </div>
+    </section>
+
+    <!-- ============ 23. CONTACT ============ -->
+    <section class="slide closing" data-title="22 · Thanks">
+      <div class="closing-main">
+        <span class="eyebrow reveal">22 · THANKS</span>
+        <h1 class="closing-title reveal">
+          欢迎来<em>试用 &amp; 提建议</em>。
+        </h1>
+        <p class="lede reveal">代码已托管在 GitHub Issues，欢迎 issue / PR；本地 clone 后 5 分钟可跑起来。</p>
+      </div>
+      <footer class="closing-foot reveal">
+        <div class="item"><span class="lbl">// REPO</span><span class="val">github.com/&lt;org&gt;/studenthub</span></div>
+        <div class="item"><span class="lbl">// DOCS</span><span class="val">docs/01_PRD.md → 05_*.md</span></div>
+        <div class="item"><span class="lbl">// CONTACT</span><span class="val">team@studenthub.example</span></div>
+      </footer>
+    </section>
+
+  </main>
+
+  <script>
+    (function () {
+      const deck = document.getElementById('deck');
+      const slides = Array.from(deck.querySelectorAll('.slide'));
+      const progress = document.getElementById('progress');
+      const cornerBR = document.getElementById('cornerBR');
+      const cornerTL = document.getElementById('cornerTL');
+      const topCenter = document.getElementById('topCenter');
+      const idxRail = document.getElementById('idxRail');
+
+      const total = slides.length;
+      let current = 0;
+      let wheelLock = false;
+
+      // Build right-side dot index
+      slides.forEach((slide, index) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'it';
+        item.setAttribute('aria-label', `跳到第 ${index + 1} 页 · ${slide.dataset.title || ''}`);
+        item.title = slide.dataset.title || `第 ${index + 1} 页`;
+        item.addEventListener('click', () => goTo(index));
+        idxRail.appendChild(item);
+      });
+      const items = Array.from(idxRail.children);
+
+      function update() {
+        const midpoint = window.scrollY + window.innerHeight / 2;
+        current = Math.max(0, slides.findIndex((slide, index) => {
+          const top = slide.offsetTop;
+          const nextTop = slides[index + 1]?.offsetTop ?? Infinity;
+          return midpoint >= top && midpoint < nextTop;
+        }));
+        slides.forEach((slide, index) => {
+          slide.classList.remove('is-past', 'is-current', 'active');
+          if (index === current) slide.classList.add('is-current', 'active');
+        });
+        items.forEach((it, index) => it.classList.toggle('active', index === current));
+        progress.style.width = `${((current + 1) / total) * 100}%`;
+        cornerBR.textContent = `${String(current + 1).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
+        cornerTL.textContent = `SECTION · ${slides[current].dataset.title || (current + 1).toString().padStart(2, '0')}`;
+        topCenter.textContent = `STUDENTHUB // ${slides[current].dataset.title || 'ROADSHOW'}`.toUpperCase();
+      }
+
+      function goTo(index) {
+        const safe = Math.min(Math.max(index, 0), total - 1);
+        const target = slides[safe];
+        const top = target.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top, left: 0, behavior: 'smooth' });
+      }
+
+      // Wheel
+      window.addEventListener('wheel', (e) => {
+        if (Math.abs(e.deltaY) < 18 || wheelLock) return;
+        wheelLock = true;
+        goTo(current + (e.deltaY > 0 ? 1 : -1));
+        setTimeout(() => { wheelLock = false; }, 520);
+      }, { passive: true });
+
+      // Keyboard
+      window.addEventListener('keydown', (e) => {
+        if (e.target.matches('input, textarea, select, [contenteditable]')) return;
+        if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
+          e.preventDefault(); goTo(current + 1);
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+          e.preventDefault(); goTo(current - 1);
+        } else if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+        else if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+      });
+
+      // Touch
+      let ty = 0;
+      window.addEventListener('touchstart', (e) => { ty = e.touches[0].clientY; }, { passive: true });
+      window.addEventListener('touchend', (e) => {
+        const d = ty - e.changedTouches[0].clientY;
+        if (Math.abs(d) > 50) goTo(current + (d > 0 ? 1 : -1));
+      }, { passive: true });
+
+      window.addEventListener('scroll', update, { passive: true });
+      window.addEventListener('resize', update);
+      update();
+    })();
+  </script>
+</body>
+</html>
