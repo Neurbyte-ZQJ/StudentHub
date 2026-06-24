@@ -30,9 +30,13 @@ export const stAssociationApi = {
   listMembers(id) {
     return http.get(`/st/associations/${id}/members`)
   },
-  // 查询用户列表（指导教师下拉用）
+  // 查询用户列表(指导教师下拉用,仅教职工)
   listUsers() {
     return http.get('/st/users')
+  },
+  // 查询学生列表(社长下拉用)
+  listStudents() {
+    return http.get('/st/students')
   }
 }
 

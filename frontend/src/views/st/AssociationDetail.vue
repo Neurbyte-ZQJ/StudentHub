@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>社团详情</span>
           <div>
-            <el-button v-if="assoc && assoc.status === 'preparing'" type="primary" size="small" @click="goEdit">编辑</el-button>
+            <el-button v-if="assoc && assoc.status !== 'cancelled'" type="primary" size="small" @click="goEdit">编辑</el-button>
             <el-button @click="goBack">返回</el-button>
           </div>
         </div>

@@ -192,6 +192,7 @@ const staticRoutes = [
       { path: 'qg/attendance', name: 'QgAttendance', component: () => import('@/views/qg/AttendanceRecord.vue'), meta: { title: '工时打卡', requiresAuth: true } },
       // 我的申请
       { path: 'mine', name: 'MineHome', component: () => import('@/views/cmp/MyScore.vue'), meta: { title: '我的申请', requiresAuth: true } },
+      { path: 'mine/ty-development', name: 'MineTyDevelopment', component: () => import('@/views/ty/MyDevelopment.vue'), meta: { title: '我的团员发展', requiresAuth: true } },
       { path: 'mine/ty-application', name: 'MineTyApplication', component: () => import('@/views/ty/ApplicationList.vue'), meta: { title: '我的入团申请', requiresAuth: true } },
       { path: 'mine/thought-report', name: 'MineThoughtReport', component: () => import('@/views/ty/MyThoughtReport.vue'), meta: { title: '我的思想汇报', requiresAuth: true } },
       { path: 'mine/activity', name: 'MineActivity', component: () => import('@/views/st/ActivityList.vue'), meta: { title: '我的社团', requiresAuth: true } },

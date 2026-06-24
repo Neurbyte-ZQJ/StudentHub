@@ -4,7 +4,15 @@
       <template #header>
         <div class="card-header">
           <span>入团申请</span>
-          <el-button type="primary" @click="goCreate">新增申请</el-button>
+          <div class="header-actions">
+            <el-button
+              v-if="authStore.user?.student_id"
+              @click="goMyDevelopment"
+            >
+              查看我的团员发展
+            </el-button>
+            <el-button type="primary" @click="goCreate">新增申请</el-button>
+          </div>
         </div>
       </template>
 
@@ -111,6 +119,11 @@ function goCreate() {
   router.push('/ty/application/new')
 }
 
+// 跳转我的团员发展（学生视角）
+function goMyDevelopment() {
+  router.push('/mine/ty-development')
+}
+
 // 跳转编辑
 function goEdit(id) {
   router.push(`/ty/application/${id}/edit`)
@@ -171,4 +184,9 @@ onMounted(() => {
 
 <style scoped>
 /* .card-header / .filter-bar / .pagination-wrap 已在全局定义 */
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 </style>

@@ -10,7 +10,7 @@
       <!-- 顶部筛选区 -->
       <div class="filter-bar">
         <el-input v-model="filterPositionTitle" placeholder="岗位名称" clearable style="width: 160px" />
-        <el-input v-model="filterStudentId" placeholder="学生ID" clearable style="width: 140px" />
+        <el-input v-model="filterStudentId" placeholder="学号/姓名/学生ID" clearable style="width: 200px" />
         <el-date-picker
           v-model="filterDateRange"
           type="daterange"
@@ -105,6 +105,18 @@
                 <el-tag size="small">{{ row.status_text || '--' }}</el-tag>
               </template>
             </el-table-column>
+            <el-table-column label="操作" width="120" fixed="right">
+              <template #default="{ row }">
+                <el-button
+                  v-if="row.status === 'S1'"
+                  link
+                  type="success"
+                  size="small"
+                  @click="handleConfirmAssess(row.id)"
+                >确认</el-button>
+                <span v-else class="qg-text-muted">--</span>
+              </template>
+            </el-table-column>
           </el-table>
 
           <div class="pagination-wrap">
@@ -182,13 +194,26 @@
     </el-card>
 
     <!-- 上班打卡对话框 -->
-    <el-dialog v-model="clockInVisible" title="上班打卡" width="460px" destroy-on-close>
+    <el-dialog v-model="clockInVisible" title="上班打卡" width="520px" destroy-on-close>
       <el-form :model="clockInForm" label-width="100px">
-        <el-form-item label="岗位申请ID">
-          <el-input v-model="clockInForm.apply_id" placeholder="请输入岗位申请ID" />
-        </el-form-item>
-        <el-form-item label="学生ID">
-          <el-input v-model="clockInForm.student_id" placeholder="请输入学生ID" />
+        <el-form-item label="岗位申请">
+          <el-select
+            v-model="clockInForm.apply_id"
+            filterable
+            remote
+            :remote-method="searchApplies"
+            :loading="applyLoading"
+            placeholder="请选择岗位(搜索岗位/学生/学号)"
+            style="width: 100%"
+            @focus="searchApplies('')"
+          >
+            <el-option
+              v-for="item in applyOptions"
+              :key="item.id"
+              :label="`${item.position_title} - ${item.student_name} (#${item.id})`"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="工作日期">
           <el-date-picker v-model="clockInForm.work_date" type="date" value-format="YYYY-MM-DD" placeholder="选择工作日期" style="width: 100%" />
@@ -238,22 +263,42 @@
     </el-dialog>
 
     <!-- 创建考核对话框 -->
-    <el-dialog v-model="assessVisible" title="创建月度考核" width="500px" destroy-on-close>
+    <el-dialog v-model="assessVisible" title="创建月度考核" width="560px" destroy-on-close>
       <el-form :model="assessForm" label-width="100px">
-        <el-form-item label="岗位申请ID">
-          <el-input v-model="assessForm.apply_id" placeholder="请输入岗位申请ID" />
+        <el-form-item label="岗位申请">
+          <el-select
+            v-model="assessForm.apply_id"
+            filterable
+            remote
+            :remote-method="searchApplies"
+            :loading="applyLoading"
+            placeholder="请选择岗位(搜索岗位/学生/学号)"
+            style="width: 100%"
+            @focus="searchApplies('')"
+          >
+            <el-option
+              v-for="item in applyOptions"
+              :key="item.id"
+              :label="`${item.position_title} - ${item.student_name} (#${item.id})`"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="年月">
           <el-date-picker v-model="assessForm.assess_ym" type="month" value-format="YYYY-MM" placeholder="选择年月" style="width: 100%" />
         </el-form-item>
         <el-form-item label="出勤分">
-          <el-input v-model.number="assessForm.score_attendance" type="number" placeholder="0-100" />
+          <el-input v-model.number="assessForm.score_attendance" type="number" placeholder="0-100(自动按工时算出,可手动调整)" />
+          <div v-if="attendancePreview" class="qg-attendance-hint">
+            实出勤 {{ attendancePreview.actual_hours }}h / 标准工时 {{ attendancePreview.should_hours }}h
+            <span class="qg-attendance-hint__formula">（{{ attendancePreview.formula }}）</span>
+          </div>
         </el-form-item>
         <el-form-item label="工作完成分">
           <el-input v-model.number="assessForm.score_work_complete" type="number" placeholder="0-100" />
         </el-form-item>
         <el-form-item label="综合分">
-          <el-input v-model.number="assessForm.score_comprehensive" type="number" placeholder="0-100" />
+          <el-input v-model.number="assessForm.score_comprehensive" type="number" placeholder="0-100(人工评分:满意度/仪容仪表/协作度)" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -263,10 +308,26 @@
     </el-dialog>
 
     <!-- 计算薪酬对话框 -->
-    <el-dialog v-model="payrollVisible" title="计算薪酬" width="460px" destroy-on-close>
+    <el-dialog v-model="payrollVisible" title="计算薪酬" width="520px" destroy-on-close>
       <el-form :model="payrollForm" label-width="100px">
-        <el-form-item label="岗位申请ID">
-          <el-input v-model="payrollForm.apply_id" placeholder="请输入岗位申请ID" />
+        <el-form-item label="岗位申请">
+          <el-select
+            v-model="payrollForm.apply_id"
+            filterable
+            remote
+            :remote-method="searchApplies"
+            :loading="applyLoading"
+            placeholder="请选择岗位(搜索岗位/学生/学号)"
+            style="width: 100%"
+            @focus="searchApplies('')"
+          >
+            <el-option
+              v-for="item in applyOptions"
+              :key="item.id"
+              :label="`${item.position_title} - ${item.student_name} (#${item.id})`"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="年月">
           <el-date-picker v-model="payrollForm.pay_ym" type="month" value-format="YYYY-MM" placeholder="选择年月" style="width: 100%" />
@@ -281,9 +342,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { qgAttendanceApi, qgAssessApi, qgPayrollApi } from '@/api/qg'
+import { qgAttendanceApi, qgAssessApi, qgPayrollApi, qgApplyApi } from '@/api/qg'
 import { formatDateTime, formatDate } from '@/utils/datetime'
 
 // ========== 映射常量 ==========
@@ -326,7 +387,7 @@ async function fetchAttendanceList() {
       page_size: attendancePageSize.value
     }
     if (filterPositionTitle.value) params.position_title = filterPositionTitle.value
-    if (filterStudentId.value) params.student_id = filterStudentId.value
+    if (filterStudentId.value) params.student_keyword = filterStudentId.value
     if (filterDateRange.value && filterDateRange.value.length === 2) {
       params.date_from = filterDateRange.value[0]
       params.date_to = filterDateRange.value[1]
@@ -343,29 +404,49 @@ async function fetchAttendanceList() {
 
 // 上班打卡
 const clockInVisible = ref(false)
-const clockInForm = ref({ apply_id: '', student_id: '', work_date: '', clock_method: 'card' })
+const clockInForm = ref({ apply_id: '', student_id: '', student_name: '', work_date: '', clock_method: 'card' })
+
+// 岗位申请下拉选项（远程搜索用）
+const applyOptions = ref([])
+const applyLoading = ref(false)
+
+async function searchApplies(keyword = '') {
+  applyLoading.value = true
+  try {
+    const data = await qgApplyApi.list({ keyword, page_size: 50 })
+    applyOptions.value = data.items || []
+  } catch (e) {
+    console.error('加载岗位申请失败', e)
+    applyOptions.value = []
+  } finally {
+    applyLoading.value = false
+  }
+}
 
 function showClockInDialog() {
-  clockInForm.value = { apply_id: '', student_id: '', work_date: '', clock_method: 'card' }
+  clockInForm.value = { apply_id: '', student_id: '', student_name: '', work_date: '', clock_method: 'card' }
+  searchApplies('')
   clockInVisible.value = true
 }
 
 async function handleClockIn() {
   if (!clockInForm.value.apply_id) {
-    ElMessage.warning('请输入岗位申请ID')
-    return
-  }
-  if (!clockInForm.value.student_id) {
-    ElMessage.warning('请输入学生ID')
+    ElMessage.warning('请选择岗位申请')
     return
   }
   if (!clockInForm.value.work_date) {
     ElMessage.warning('请选择工作日期')
     return
   }
+  // 从已选岗位补出 student_id / student_name
+  const picked = applyOptions.value.find(a => a.id === clockInForm.value.apply_id)
+  if (!picked) {
+    ElMessage.warning('岗位申请数据已失效，请重新选择')
+    return
+  }
   try {
-    const { apply_id, student_id, work_date, clock_method } = clockInForm.value
-    await qgAttendanceApi.clockIn({ apply_id: Number(apply_id), work_date, clock_method }, Number(student_id))
+    const { apply_id, work_date, clock_method } = clockInForm.value
+    await qgAttendanceApi.clockIn({ apply_id, work_date, clock_method }, picked.student_id)
     ElMessage.success('上班打卡成功')
     clockInVisible.value = false
     fetchAttendanceList()
@@ -475,22 +556,59 @@ function showAssessDialog() {
   assessForm.value = {
     apply_id: '',
     assess_ym: '',
-    score_attendance: 0,
-    score_work_complete: 0,
-    score_comprehensive: 0
+    // 三项分数均默认空,等待用户填写或触发"出勤分自动计算"。
+    // 留空提交时后端 binding:"required" 对 int 0 不拦截,最终会被存为 0。
+    score_attendance: null,
+    score_work_complete: null,
+    score_comprehensive: null
   }
+  attendancePreview.value = null
+  searchApplies('')
   assessVisible.value = true
 }
 
+// 出勤分预览（自动算 score_attendance）
+const attendancePreview = ref(null)
+let previewTimer = null
+
+async function refreshAttendancePreview() {
+  const applyId = assessForm.value.apply_id
+  const ym = assessForm.value.assess_ym
+  if (!applyId || !ym) {
+    attendancePreview.value = null
+    return
+  }
+  const [year, month] = ym.split('-').map(Number)
+  try {
+    const data = await qgAssessApi.previewAttendance(applyId, year, month)
+    attendancePreview.value = data
+    // 自动回填出勤分（允许用户后续手动覆盖）
+    assessForm.value.score_attendance = data.score_attendance
+  } catch (e) {
+    attendancePreview.value = null
+    console.error('出勤分预览失败', e)
+  }
+}
+
+// 监听 apply_id / assess_ym 变化,触发出勤分预览(防抖 250ms)
+watch(
+  () => [assessForm.value.apply_id, assessForm.value.assess_ym],
+  () => {
+    if (previewTimer) clearTimeout(previewTimer)
+    previewTimer = setTimeout(refreshAttendancePreview, 250)
+  }
+)
+
 async function handleCreateAssess() {
   if (!assessForm.value.apply_id) {
-    ElMessage.warning('请输入岗位申请ID')
+    ElMessage.warning('请选择岗位申请')
     return
   }
   if (!assessForm.value.assess_ym) {
     ElMessage.warning('请选择年月')
     return
   }
+  assessLoading.value = true
   try {
     const [year, month] = assessForm.value.assess_ym.split('-').map(Number)
     await qgAssessApi.create({
@@ -505,7 +623,24 @@ async function handleCreateAssess() {
     assessVisible.value = false
     fetchAssessList()
   } catch (e) {
+    // 业务错误已由 http.js 拦截器 ElMessage.error 提示,这里只记录日志。
     console.error('创建考核失败', e)
+  } finally {
+    assessLoading.value = false
+  }
+}
+
+// 确认月度考核（S1 → S3），状态机推进，由学生处 / 财务管理员触发
+async function handleConfirmAssess(id) {
+  try {
+    await ElMessageBox.confirm('确认将此月度考核标记为"已确认"？', '确认月度考核')
+    await qgAssessApi.confirm(id)
+    ElMessage.success('已确认')
+    fetchAssessList()
+  } catch (e) {
+    if (e !== 'cancel') {
+      console.error('确认月度考核失败', e)
+    }
   }
 }
 
@@ -541,12 +676,13 @@ const payrollForm = ref({ apply_id: '', pay_ym: '' })
 
 function showPayrollDialog() {
   payrollForm.value = { apply_id: '', pay_ym: '' }
+  searchApplies('')
   payrollVisible.value = true
 }
 
 async function handleComputePayroll() {
   if (!payrollForm.value.apply_id) {
-    ElMessage.warning('请输入岗位申请ID')
+    ElMessage.warning('请选择岗位申请')
     return
   }
   if (!payrollForm.value.pay_ym) {
@@ -598,7 +734,10 @@ async function handlePay(id) {
 
 // ========== 初始化 ==========
 onMounted(() => {
+  // 三个 tab 数据都预加载：避免依赖 tab 切换触发（如 Vite HMR 失败/浏览器缓存时也能立刻看到所有数据）
   fetchAttendanceList()
+  fetchAssessList()
+  fetchPayrollList()
 })
 </script>
 
@@ -606,5 +745,19 @@ onMounted(() => {
 /* .card-header, .filter-bar, .action-bar, .pagination-wrap 已在 App.vue 全局定义 */
 .summary-result {
   margin-top: var(--sh-space-md);
+}
+.qg-attendance-hint {
+  font-size: 12px;
+  color: var(--el-color-info-light-3, #909399);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.qg-attendance-hint__formula {
+  color: var(--el-text-color-secondary, #606266);
+  font-size: 11px;
+}
+.qg-text-muted {
+  color: var(--el-text-color-placeholder, #c0c4cc);
+  font-size: 12px;
 }
 </style>

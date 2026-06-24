@@ -36,7 +36,7 @@
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="goDetail(row.id)">查看</el-button>
-            <el-button v-if="row.status === 'preparing'" link type="primary" size="small" @click="goEdit(row.id)">编辑</el-button>
+            <el-button v-if="row.status !== 'cancelled'" link type="primary" size="small" @click="goEdit(row.id)">编辑</el-button>
             <el-popconfirm v-if="row.status === 'preparing' || row.status === 'cancelled'" title="确认删除此社团？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button link type="danger" size="small">删除</el-button>

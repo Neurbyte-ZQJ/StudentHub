@@ -392,12 +392,13 @@ func SeedMenus(db *gorm.DB, zlog *zap.Logger) {
 		{Code: "cmp-ranking", Title: "综合分排行", Icon: "", Path: "/cmp/ranking", Component: "views/cmp/ScoreRanking.vue", Sort: 2, Roles: string(adminRoles)},
 
 		// 我的申请 子菜单
-		{Code: "mine-application", Title: "我的入团申请", Icon: "", Path: "/mine/ty-application", Component: "views/ty/ApplicationList.vue", Sort: 1, Roles: allRoles},
-		{Code: "mine-thought-report", Title: "我的思想汇报", Icon: "", Path: "/mine/thought-report", Component: "views/ty/MyThoughtReport.vue", Sort: 2, Roles: allRoles},
-		{Code: "mine-activity", Title: "我的社团", Icon: "", Path: "/mine/activity", Component: "views/st/ActivityList.vue", Sort: 3, Roles: allRoles},
-		{Code: "mine-work", Title: "我的勤工", Icon: "", Path: "/mine/work", Component: "views/qg/AttendanceRecord.vue", Sort: 4, Roles: allRoles},
-		{Code: "mine-score", Title: "我的综合分", Icon: "", Path: "/mine/score", Component: "views/cmp/MyScore.vue", Sort: 5, Roles: allRoles},
-		{Code: "mine-profile", Title: "我的档案", Icon: "", Path: "/mine/profile", Component: "views/idx/MyProfile.vue", Sort: 6, Roles: allRoles},
+		{Code: "mine-development", Title: "我的团员发展", Icon: "", Path: "/mine/ty-development", Component: "views/ty/MyDevelopment.vue", Sort: 1, Roles: allRoles},
+		{Code: "mine-application", Title: "我的入团申请", Icon: "", Path: "/mine/ty-application", Component: "views/ty/ApplicationList.vue", Sort: 2, Roles: allRoles},
+		{Code: "mine-thought-report", Title: "我的思想汇报", Icon: "", Path: "/mine/thought-report", Component: "views/ty/MyThoughtReport.vue", Sort: 3, Roles: allRoles},
+		{Code: "mine-activity", Title: "我的社团", Icon: "", Path: "/mine/activity", Component: "views/st/ActivityList.vue", Sort: 4, Roles: allRoles},
+		{Code: "mine-work", Title: "我的勤工", Icon: "", Path: "/mine/work", Component: "views/qg/AttendanceRecord.vue", Sort: 5, Roles: allRoles},
+		{Code: "mine-score", Title: "我的综合分", Icon: "", Path: "/mine/score", Component: "views/cmp/MyScore.vue", Sort: 6, Roles: allRoles},
+		{Code: "mine-profile", Title: "我的档案", Icon: "", Path: "/mine/profile", Component: "views/idx/MyProfile.vue", Sort: 7, Roles: allRoles},
 
 		// IDX 学生管理 子菜单
 		{Code: "idx-student", Title: "学生列表", Icon: "", Path: "/idx/student", Component: "views/idx/StudentList.vue", Sort: 1, Roles: string(adminRoles)},

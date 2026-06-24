@@ -55,6 +55,9 @@ export const qgApplyApi = {
   apply(data, studentId) {
     return http.post('/qg/applies', data, { params: { student_id: studentId } })
   },
+  list(params) {
+    return http.get('/qg/applies', { params })
+  },
   get(id) {
     return http.get(`/qg/applies/${id}`)
   },
@@ -98,6 +101,16 @@ export const qgAssessApi = {
   },
   get(id) {
     return http.get(`/qg/monthly-assessments/${id}`)
+  },
+  // 确认月度考核（S1 → S3），由学生处 / 财务管理员触发
+  confirm(id) {
+    return http.post(`/qg/monthly-assessments/${id}/confirm`)
+  },
+  // 出勤分预览（不写库），用于"创建月度考核"对话框自动回填出勤分
+  previewAttendance(applyId, year, month) {
+    return http.get('/qg/monthly-assessments/attendance-preview', {
+      params: { apply_id: applyId, year, month }
+    })
   }
 }
 

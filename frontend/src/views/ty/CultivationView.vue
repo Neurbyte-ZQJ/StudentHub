@@ -54,6 +54,16 @@
 
           <el-table :data="recordList" stripe v-loading="recordLoading" class="rd-table" table-layout="auto">
             <el-table-column prop="biz_no" label="编号" min-width="180" />
+            <el-table-column prop="student_no" label="学号" min-width="140">
+              <template #default="{ row }">
+                {{ row.student_no || '—' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="student_name" label="姓名" min-width="120">
+              <template #default="{ row }">
+                {{ row.student_name || '—' }}
+              </template>
+            </el-table-column>
             <el-table-column prop="record_year" label="年份" min-width="80" />
             <el-table-column prop="record_month" label="月份" min-width="80" />
             <el-table-column prop="record_type" label="记录类型" min-width="100">
@@ -83,6 +93,8 @@
           </div>
 
           <el-table :data="courseList" stripe v-loading="courseLoading" class="rd-table" table-layout="auto">
+            <el-table-column prop="student_no" label="学号" min-width="120" />
+            <el-table-column prop="student_name" label="姓名" min-width="100" />
             <el-table-column prop="course_name" label="课程名称" min-width="180" />
             <el-table-column prop="semester" label="学期" min-width="180" />
             <el-table-column prop="study_at" label="学习时间" min-width="160">
@@ -103,7 +115,7 @@
             </el-table-column>
             <el-table-column label="操作" min-width="120">
               <template #default="{ row }">
-                <el-button v-if="!row.is_pass" link type="success" size="small" @click="handlePassCourse(row.id)">标记结业</el-button>
+                <el-button v-if="!row.is_pass && canMarkPass" link type="success" size="small" @click="handlePassCourse(row.id)">标记结业</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -147,19 +159,47 @@
       </el-tabs>
     </el-card>
 
-    <!-- 分配培养联系人弹窗 -->
-    <el-dialog v-model="linkDialogVisible" title="分配培养联系人" width="500px" destroy-on-close>
+    <!-- 分配培养联系人弹窗（PRD §4.3.4：必须 2 位） -->
+    <el-dialog v-model="linkDialogVisible" title="分配培养联系人" width="640px" destroy-on-close>
       <el-form ref="linkFormRef" :model="linkForm" :rules="linkFormRules" label-width="100px">
         <el-form-item label="关联申请" prop="application_id">
-          <el-select v-model="linkForm.application_id" placeholder="请选择入团申请" style="width: 100%" filterable>
+          <el-select v-model="linkForm.application_id" placeholder="请选择入团申请" style="width: 100%" filterable @change="onApplicationChange">
             <el-option v-for="app in applications" :key="app.id" :label="`${app.student_name}（${app.biz_no}）`" :value="app.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="联系人姓名" prop="mentor_name">
-          <el-input v-model="linkForm.mentor_name" placeholder="请输入联系人姓名" />
+        <el-form-item label="开始时间" prop="start_at">
+          <el-date-picker v-model="linkForm.start_at" type="date" value-format="YYYY-MM-DD" placeholder="选择开始时间" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="联系人类型" prop="mentor_type">
-          <el-radio-group v-model="linkForm.mentor_type">
+        <el-divider content-position="left">第 1 位培养联系人</el-divider>
+        <el-form-item label="联系人 A" :prop="`mentors.0.mentor_student_id`" :rules="mentorStudentRules(0)">
+          <el-select v-model="linkForm.mentors[0].mentor_student_id" placeholder="请选择学生" style="width: 100%" filterable clearable>
+            <el-option
+              v-for="s in mentorCandidateOptions"
+              :key="s.id"
+              :label="`${s.name}（${s.student_no} · ${politicalStatusLabel(s.political_status)}）`"
+              :value="s.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="政治面貌" :prop="`mentors.0.mentor_type`" :rules="mentorTypeRules(0)">
+          <el-radio-group v-model="linkForm.mentors[0].mentor_type">
+            <el-radio value="league_member">团员</el-radio>
+            <el-radio value="party_member">党员</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-divider content-position="left">第 2 位培养联系人</el-divider>
+        <el-form-item label="联系人 B" :prop="`mentors.1.mentor_student_id`" :rules="mentorStudentRules(1)">
+          <el-select v-model="linkForm.mentors[1].mentor_student_id" placeholder="请选择学生" style="width: 100%" filterable clearable>
+            <el-option
+              v-for="s in mentorCandidateOptions"
+              :key="s.id"
+              :label="`${s.name}（${s.student_no} · ${politicalStatusLabel(s.political_status)}）`"
+              :value="s.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="政治面貌" :prop="`mentors.1.mentor_type`" :rules="mentorTypeRules(1)">
+          <el-radio-group v-model="linkForm.mentors[1].mentor_type">
             <el-radio value="league_member">团员</el-radio>
             <el-radio value="party_member">党员</el-radio>
           </el-radio-group>
@@ -214,8 +254,13 @@
     <el-dialog v-model="courseDialogVisible" title="新增团课记录" width="550px" destroy-on-close>
       <el-form ref="courseFormRef" :model="courseForm" :rules="courseFormRules" label-width="100px">
         <el-form-item label="学生" prop="student_id">
-          <el-select v-model="courseForm.student_id" placeholder="请选择学生" style="width: 100%" filterable>
-            <el-option v-for="app in applications" :key="app.student_id" :label="app.student_name" :value="app.student_id" />
+          <!-- 学生本人：只读展示，不允许改 -->
+          <template v-if="isStudentSelf">
+            <el-input :value="currentStudentDisplay" disabled placeholder="当前账号已自动绑定为学生本人" />
+          </template>
+          <!-- 管理员/教师：可下拉选有入团申请的学生 -->
+          <el-select v-else v-model="courseForm.student_id" placeholder="请选择学生" style="width: 100%" filterable>
+            <el-option v-for="app in applications" :key="app.student_id" :label="`${app.student_name}（${app.student_no}）`" :value="app.student_id" />
           </el-select>
         </el-form-item>
         <el-form-item label="课程名称" prop="course_name">
@@ -296,6 +341,8 @@
     <el-dialog v-model="recordDetailVisible" title="培养记录详情" width="700px" destroy-on-close>
       <el-descriptions :column="2" border v-if="currentRecord">
         <el-descriptions-item label="编号" :span="2">{{ currentRecord.biz_no }}</el-descriptions-item>
+        <el-descriptions-item label="学号">{{ currentRecord.student_no || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="姓名">{{ currentRecord.student_name || '—' }}</el-descriptions-item>
         <el-descriptions-item label="年份">{{ currentRecord.record_year }}</el-descriptions-item>
         <el-descriptions-item label="月份">{{ currentRecord.record_month }}</el-descriptions-item>
         <el-descriptions-item label="记录类型">
@@ -321,7 +368,37 @@ import {
   tyThoughtReportApi,
   tyApplicationApi
 } from '@/api/ty'
+import { idxStudentApi } from '@/api/idx'
 import { formatDateTime, formatDate } from '@/utils/datetime'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+
+// 当前登录用户
+const currentUser = computed(() => authStore.user || {})
+const currentUserRoles = computed(() => currentUser.value?.roles?.map(r => r.code) || [])
+const currentStudentId = computed(() => currentUser.value?.student_id || null)
+const currentStudentDisplay = computed(() => {
+  const u = currentUser.value
+  if (!u) return ''
+  const no = u.student_no || ''
+  const name = u.display_name || u.name || ''
+  return no ? `${no} ${name}` : name || `student#${currentStudentId.value}`
+})
+
+// 是否学生身份（未兼教师/管理员）
+const isStudentSelf = computed(() => {
+  const roles = currentUserRoles.value
+  if (roles.length === 0) return !!currentStudentId.value
+  const isAdminish = roles.some(r =>
+    ['R-SY-ADMIN', 'R-SY-LEAGUE', 'R-SY-STU-AF', 'R-SY-FA', 'R-SY-OPS',
+     'R-COL-ADMIN', 'R-COL-COUN', 'R-COL-TUTOR', 'R-COL-FLOOR', 'R-COL-LEAGUE'].includes(r))
+  return !isAdminish && !!currentStudentId.value
+})
+
+// 是否可标记结业（教师/管理员/团支书）
+const canMarkPass = computed(() => currentUserRoles.value.some(r =>
+  ['R-SY-ADMIN', 'R-SY-LEAGUE', 'R-COL-LEAGUE', 'R-COL-COUN', 'R-STU-LEAGUE'].includes(r)))
 
 const activeTab = ref('link')
 
@@ -340,26 +417,96 @@ async function fetchLinks() {
   }
 }
 
+// 培养联系人候选人（仅取政治面貌为团员/党员的学生）
+const mentorCandidateOptions = ref([])
+async function fetchMentorCandidates() {
+  try {
+    const data = await idxStudentApi.list({ page: 1, page_size: 200 })
+    const items = (data && data.items) || []
+    mentorCandidateOptions.value = items.filter((s) => {
+      const ps = (s.political_status || '').toLowerCase()
+      return (
+        ps === 'member' || ps === 'league_member' || ps === '共青团员' ||
+        ps === 'party_member' || ps === 'party_probationary' || ps === '中共党员' || ps === '预备党员'
+      )
+    })
+  } catch (e) {
+    console.error('加载培养联系人候选名单失败', e)
+    mentorCandidateOptions.value = []
+  }
+}
+
+function politicalStatusLabel(ps) {
+  const map = {
+    member: '团员', league_member: '团员', '共青团员': '团员',
+    party_member: '党员', party_probationary: '预备党员',
+    '中共党员': '党员', '预备党员': '预备党员'
+  }
+  return map[ps] || (ps || '群众')
+}
+
 const linkDialogVisible = ref(false)
 const linkSaving = ref(false)
 const linkFormRef = ref()
-const linkForm = ref({ application_id: null, mentor_name: '', mentor_type: 'league_member' })
+const emptyMentor = () => ({ mentor_student_id: null, mentor_type: 'league_member' })
+const linkForm = ref({
+  application_id: null,
+  start_at: '',
+  mentors: [emptyMentor(), emptyMentor()]
+})
 const linkFormRules = {
   application_id: [{ required: true, message: '请选择入团申请', trigger: 'change' }],
-  mentor_name: [{ required: true, message: '请输入联系人姓名', trigger: 'blur' }],
-  mentor_type: [{ required: true, message: '请选择联系人类型', trigger: 'change' }]
+  start_at: [{ required: true, message: '请选择开始时间', trigger: 'change' }]
+}
+
+// 动态校验：两位联系人必填 + 不可为同一人
+function mentorStudentRules(idx) {
+  return [
+    { required: true, message: '请选择联系人', trigger: 'change' },
+    {
+      validator: (rule, value, callback) => {
+        if (!value) return callback()
+        const other = linkForm.value.mentors[1 - idx]
+        if (other && other.mentor_student_id && value === other.mentor_student_id) {
+          return callback(new Error('两位联系人不能是同一人'))
+        }
+        callback()
+      },
+      trigger: 'change'
+    }
+  ]
+}
+function mentorTypeRules(idx) {
+  return [{ required: true, message: '请选择联系人政治面貌', trigger: 'change' }]
 }
 
 function openLinkDialog() {
-  linkForm.value = { application_id: null, mentor_name: '', mentor_type: 'league_member' }
+  linkForm.value = {
+    application_id: null,
+    start_at: new Date().toISOString().slice(0, 10),
+    mentors: [emptyMentor(), emptyMentor()]
+  }
   linkDialogVisible.value = true
+  fetchMentorCandidates()
+}
+function onApplicationChange() {
+  // 申请变化时清空已选联系人，避免选到申请人本人
+  linkForm.value.mentors = [emptyMentor(), emptyMentor()]
 }
 async function handleCreateLink() {
   try { await linkFormRef.value.validate() } catch { return }
+  if (
+    linkForm.value.mentors[0].mentor_student_id &&
+    linkForm.value.mentors[1].mentor_student_id &&
+    linkForm.value.mentors[0].mentor_student_id === linkForm.value.mentors[1].mentor_student_id
+  ) {
+    ElMessage.warning('两位联系人不能是同一人')
+    return
+  }
   linkSaving.value = true
   try {
     await tyCultivationLinkApi.create(linkForm.value)
-    ElMessage.success('联系人分配成功')
+    ElMessage.success('两位培养联系人已分配')
     linkDialogVisible.value = false
     fetchLinks()
   } catch (e) {} finally { linkSaving.value = false }
@@ -439,14 +586,22 @@ const courseFormRules = {
 }
 
 function openCourseDialog() {
-  courseForm.value = { student_id: null, course_name: '', semester: '', study_at: '', certificate_no: '' }
+  // 学生身份：自动绑定为本人；管理员/教师：需手动选择
+  const initialStudentId = isStudentSelf.value ? currentStudentId.value : null
+  courseForm.value = { student_id: initialStudentId, course_name: '', semester: '', study_at: '', certificate_no: '' }
   courseDialogVisible.value = true
 }
 async function handleCreateCourse() {
   try { await courseFormRef.value.validate() } catch { return }
   courseSaving.value = true
   try {
-    await tyCourseRecordApi.create(courseForm.value)
+    // 学生身份不传 student_id（由后端从登录账号注入）；
+    // 管理员/教师显式传 student_id
+    const payload = { ...courseForm.value }
+    if (isStudentSelf.value) {
+      delete payload.student_id
+    }
+    await tyCourseRecordApi.create(payload)
     ElMessage.success('团课记录已保存')
     courseDialogVisible.value = false
     fetchCourses()

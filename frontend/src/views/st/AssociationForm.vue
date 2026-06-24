@@ -24,6 +24,17 @@
           </el-select>
         </el-form-item>
 
+        <el-form-item label="社长" prop="president_student_id">
+          <el-select v-model="form.president_student_id" placeholder="请选择社长" clearable filterable style="width: 100%">
+            <el-option
+              v-for="s in students"
+              :key="s.id"
+              :label="`${s.student_no} ${s.name}`"
+              :value="s.id"
+            />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="业务范围" prop="business_scope">
           <el-input v-model="form.business_scope" type="textarea" :rows="3" placeholder="请描述社团业务范围" />
         </el-form-item>
@@ -67,12 +78,14 @@ const formRef = ref()
 const submitting = ref(false)
 const colleges = ref([])
 const users = ref([])
+const students = ref([])
 const founderInput = ref('')
 
 const form = reactive({
   name: '',
   college_id: null,
   tutor_user_id: null,
+  president_student_id: null,
   business_scope: '',
   founders: []
 })
@@ -116,6 +129,15 @@ async function fetchUsers() {
   }
 }
 
+async function fetchStudents() {
+  try {
+    const data = await stAssociationApi.listStudents()
+    students.value = data.items || []
+  } catch (e) {
+    console.error('获取学生列表失败', e)
+  }
+}
+
 async function fetchDetail() {
   if (!isEdit) return
   try {
@@ -123,6 +145,7 @@ async function fetchDetail() {
     form.name = data.name
     form.college_id = data.college_id
     form.tutor_user_id = data.tutor_user_id || null
+    form.president_student_id = data.president_student_id || null
     form.business_scope = data.business_scope
   } catch (e) {
     ElMessage.error('获取社团信息失败')
@@ -145,6 +168,7 @@ async function handleSave() {
         name: form.name,
         college_id: form.college_id,
         tutor_user_id: form.tutor_user_id,
+        president_student_id: form.president_student_id,
         business_scope: form.business_scope
       })
       ElMessage.success('更新成功')
@@ -153,6 +177,7 @@ async function handleSave() {
         name: form.name,
         college_id: form.college_id,
         tutor_user_id: form.tutor_user_id,
+        president_student_id: form.president_student_id,
         business_scope: form.business_scope,
         founders: form.founders
       })
@@ -169,6 +194,7 @@ async function handleSave() {
 onMounted(() => {
   fetchColleges()
   fetchUsers()
+  fetchStudents()
   if (isEdit) fetchDetail()
 })
 </script>
