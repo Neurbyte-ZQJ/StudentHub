@@ -223,6 +223,7 @@ const studentMetrics = computed(() => {
     { key: 'activity', label: '参加活动', value: s.my_activity_count || 0, color: '#67c23a' },
     { key: 'noti', label: '未读通知', value: s.unread_noti_count || 0, color: '#4a90a4' },
     { key: 'cmp', label: '综合分', value: s.my_cmp_score || 0, color: '#9b59b6' },
+    { key: 'recruit', label: '招新中计划', value: s.recruiting_plan_count || 0, color: '#e6a23c' },
   ]
 })
 

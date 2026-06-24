@@ -147,6 +147,7 @@ async function handleCommand(cmd) {
   cursor: pointer;
   gap: 10px;
   padding: 4px 8px;
+  margin-left: -16px;
   border-radius: var(--sh-radius-md);
   transition: background var(--sh-duration-fast) var(--sh-ease-out);
 }
