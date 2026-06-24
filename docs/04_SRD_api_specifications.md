@@ -503,6 +503,40 @@ DELETE /files/{id}                  → 软删（仅上传者/管理员）
 | GET  | `/audit-logs`                 | R-SY-ADMIN    | 访问审计                  |
 | GET  | `/event-logs/by-aggregate`    | scope-aware   | `?aggregate=ty.application&aggregate_id=88` |
 
+### 5.6 工作台（/dashboard）
+
+首页工作台接口，按登录用户角色域（`student` / `college` / `school`）返回差异化内容。
+
+| 方法 | 路径                  | 角色   | 说明                                       |
+| ---- | --------------------- | ------ | ------------------------------------------ |
+| GET  | `/dashboard/overview` | 已登录 | 工作台概览（用户、stats、待办、快捷入口） |
+
+`Overview.data` 字段：
+
+| 字段         | 类型        | 说明                                   |
+| ------------ | ----------- | -------------------------------------- |
+| user         | object      | 当前用户基本信息（用户名/显示名/角色） |
+| role_scope   | string      | 角色域：student / college / school     |
+| stats        | object      | 指标卡（按角色填充，详见下表）         |
+| todo_items   | TodoItem[]  | 待办事项                               |
+| quick_links  | QuickLink[] | 快捷入口                               |
+
+`stats` 字段（按角色填充；未使用的字段对当前角色始终为 0/空）：
+
+| 字段名                    | 类型    | 角色域  | 含义                                                                 |
+| ------------------------- | ------- | ------- | -------------------------------------------------------------------- |
+| my_ty_status              | string  | student | 我的入团申请状态短码（S1~S6 / S7_MEMBER / 长码）                     |
+| my_cmp_score              | int     | student | 我的综合分（最近学期）                                               |
+| my_activity_count         | int     | student | 我参加的活动数（基于 `st_activity_checkins`）                        |
+| unread_noti_count         | int     | all     | 未读通知数                                                           |
+| recruiting_assoc_count    | int     | student | **已废弃**（v1.0 起改用 `recruiting_plan_count`）                            |
+| recruiting_plan_count     | int     | student | 招新中计划数（`st_recruit_plan.status='S3' AND is_finished=0` 的计划数）       |
+| student_count             | int     | staff   | 管辖学生数（辅导员=所带班级；其他=全校）                              |
+| ty_pending_count          | int     | staff   | 待审批入团申请数                                                     |
+| incident_open_count       | int     | staff   | 未关闭社区事件数                                                     |
+| qg_position_count         | int     | staff   | 在岗勤工岗位数                                                       |
+| active_assoc_count        | int     | staff   | 活跃社团数                                                           |
+
 ---
 
 ## 6. 模块一 · TY 团员发展
@@ -750,13 +784,37 @@ POST /st/associations/{id}:cancel           → 任何 → cancelled（理由必
 ### 7.3 招新
 
 ```
-POST /st/recruit-plans               # 社长发起
-POST /st/recruit-plans/{id}:approve  # 院系/校社联
-POST /st/recruit-plans/{id}:publish  # 发布
+POST /st/recruit-plans                  # 社长发起
+POST /st/recruit-plans/{id}:approve     # 院系/校社联
+POST /st/recruit-plans/{id}:publish     # 发布
+POST /st/recruit-plans/{id}:finish      # 提前结束招新（仅 S3 状态可用，不可逆）
 
-POST /st/recruit-applies             # 学生投递（同一学年最多 3 社团）
-POST /st/recruit-applies/{id}:result # 录入面试结果（accepted/rejected）
+POST /st/recruit-applies                # 学生投递（同一学年最多 3 社团）
+POST /st/recruit-applies/{id}:result    # 录入面试结果（accepted/rejected）
 ```
+
+#### 7.3.1 提前结束招新
+
+```
+POST /api/v1/st/recruit-plans/{id}/finish
+Content-Type: application/json
+{ "reason": "招新人数已满足，提前结束" }
+```
+
+规则：
+- 仅 `status='S3'`（已通过/可投递）的计划可被结束；其他状态 → `409 / 40901`
+- 仅 `is_finished=0`（招新中）的计划可被结束；重复结束 → `409 / 40901`
+- 权限：与招新计划审批同集（`R-SY-ADMIN` / `R-SY-LEAGUE` / `R-COL-LEAGUE` / `R-COL-COUN` / `R-COL-TUTOR`）
+- 操作后写入：`is_finished=1`、`finished_at=now`、`finished_by=actor_user_id`、`finished_reason=request.reason`
+- 写业务事件 `StRecruitPlanFinished`（aggregate=`st.recruit_plan`）
+- 结束操作**不可逆**（不提供 cancel）
+
+响应：`200`，body 为更新后的 `RecruitPlanView`（含 `is_finished / finished_at / finished_by / finished_reason`）。
+
+#### 7.3.2 投递校验
+
+`POST /st/recruit-applies` 在原有校验（plan 存在、status=S3、唯一性、3 社团上限）之上，新增：
+- 计划 `is_finished=1` → 拒绝 `409 / 40901`（message: `该招新计划已结束，不可投递`）
 
 > 同一学年学生加入社团数量校验在 `POST /st/recruit-applies` 时聚合；返回 `422 / 42230`。
 

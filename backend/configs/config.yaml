@@ -1,6 +1,6 @@
 app:
   env: dev
-  port: 18080
+  port: 8080
   name: student-system
 db:
   path: ./data/studenthub.db

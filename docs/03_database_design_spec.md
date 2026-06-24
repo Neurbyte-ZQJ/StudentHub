@@ -883,10 +883,15 @@ CREATE TABLE st_recruit_plan (
     interview_at DATETIME,
     status TEXT NOT NULL DEFAULT 'S0' CHECK (status IN ('S0','S1','S3','S4')),
     result_deadline DATE,                            -- 5 工作日内录入
+    is_finished INTEGER NOT NULL DEFAULT 0,          -- 招新是否已结束（0=招新中/未结束，1=已结束；与 status 正交，仅 S3 状态下生效）
+    finished_at DATETIME,                            -- 招新结束时间（NULL=未结束）
+    finished_by INTEGER REFERENCES sys_user(id),     -- 提前结束招新的操作人
+    finished_reason TEXT,                            -- 提前结束原因（可空）
     is_deleted INTEGER NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX idx_st_recruit_plan_finished ON st_recruit_plan(is_finished, status);
 
 -- 6.2.6 招新申请（学生加入社团）
 CREATE TABLE st_recruit_apply (

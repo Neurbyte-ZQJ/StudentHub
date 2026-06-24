@@ -81,6 +81,10 @@ type StRecruitPlan struct {
 	InterviewAt      *time.Time `gorm:"column:interview_at" json:"interview_at,omitempty"`
 	Status           string     `gorm:"column:status;type:text;not null;default:S0;check:status IN ('S0','S1','S3','S4')" json:"status"`
 	ResultDeadline   *time.Time `gorm:"column:result_deadline;type:date" json:"result_deadline,omitempty"`
+	IsFinished       int        `gorm:"column:is_finished;not null;default:0;index:idx_st_recruit_plan_finished,priority:1" json:"is_finished"`
+	FinishedAt       *time.Time `gorm:"column:finished_at" json:"finished_at,omitempty"`
+	FinishedBy       *int64     `gorm:"column:finished_by" json:"finished_by,omitempty"`
+	FinishedReason   string     `gorm:"column:finished_reason;type:text" json:"finished_reason,omitempty"`
 	IsDeleted        int        `gorm:"column:is_deleted;not null;default:0" json:"is_deleted"`
 	CreatedAt        time.Time  `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt        time.Time  `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP" json:"updated_at"`
