@@ -53,8 +53,9 @@ services:
     # 重启策略: 总是自动重启 (除手动 stop)
     restart: unless-stopped
 
-    # 容器内用户 (与 Dockerfile 中创建的非 root 用户一致)
-    user: "1000:1000"
+    # 容器内用户由 Dockerfile 中 USER app 指令控制 (Alpine 系统用户)
+    # 注意: 不要在此覆盖 user, Alpine adduser -S 创建的 UID 通常为 100, 
+    #       覆盖为 1000:1000 会导致容器内文件权限异常
 
     # 健康检查 (与 Dockerfile 中 HEALTHCHECK 指令一致, 双保险)
     healthcheck:
