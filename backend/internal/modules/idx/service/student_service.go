@@ -84,6 +84,8 @@ type StudentView struct {
 	BirthDate       string `json:"birth_date,omitempty"`
 	Ethnicity       string `json:"ethnicity"`
 	PoliticalStatus string `json:"political_status"`
+	JoinAt          string `json:"join_at,omitempty"`
+	MemberCardNo    string `json:"member_card_no"`
 	CollegeID       *int64 `json:"college_id,omitempty"`
 	CollegeName     string `json:"college_name,omitempty"`
 	MajorID         *int64 `json:"major_id,omitempty"`
@@ -109,6 +111,7 @@ func toView(s models.IdxStudent, collegeName, majorName, className string) Stude
 		Gender:          s.Gender,
 		Ethnicity:       s.Ethnicity,
 		PoliticalStatus: s.PoliticalStatus,
+		MemberCardNo:    s.MemberCardNo,
 		CollegeID:       s.CollegeID,
 		CollegeName:     collegeName,
 		MajorID:         s.MajorID,
@@ -138,6 +141,9 @@ func toView(s models.IdxStudent, collegeName, majorName, className string) Stude
 
 	if s.BirthDate != nil {
 		v.BirthDate = s.BirthDate.Format("2006-01-02")
+	}
+	if s.JoinAt != nil {
+		v.JoinAt = s.JoinAt.Format("2006-01-02")
 	}
 	if s.EnrollmentAt != nil {
 		v.EnrollmentAt = s.EnrollmentAt.Format("2006-01-02")
@@ -226,6 +232,8 @@ type CreateStudentRequest struct {
 	BirthDate       string `json:"birth_date"`
 	Ethnicity       string `json:"ethnicity"`
 	PoliticalStatus string `json:"political_status"`
+	JoinAt          string `json:"join_at"`
+	MemberCardNo    string `json:"member_card_no"`
 	CollegeID       *int64 `json:"college_id"`
 	MajorID         *int64 `json:"major_id"`
 	ClassID         *int64 `json:"class_id"`
@@ -249,12 +257,18 @@ func (s *StudentService) Create(req *CreateStudentRequest) (*StudentView, error)
 		Gender:          req.Gender,
 		Ethnicity:       req.Ethnicity,
 		PoliticalStatus: req.PoliticalStatus,
+		MemberCardNo:    req.MemberCardNo,
 		CollegeID:       req.CollegeID,
 		MajorID:         req.MajorID,
 		ClassID:         req.ClassID,
 		Grade:           req.Grade,
 		Email:           req.Email,
 		Status:          "enrolled",
+	}
+
+	// 入团时间
+	if req.JoinAt != "" {
+		student.JoinAt = parseDate(req.JoinAt)
 	}
 
 	// 加密身份证
@@ -288,7 +302,40 @@ func (s *StudentService) Create(req *CreateStudentRequest) (*StudentView, error)
 		return nil, err
 	}
 
+	// 政治面貌为共青团员时，自动创建团员花名册
+	if req.PoliticalStatus == "member" && req.JoinAt != "" && student.CollegeID != nil {
+		s.autoCreateRoster(&student)
+	}
+
 	return s.Get(student.ID)
+}
+
+// autoCreateRoster 为中学入团的学生自动创建团员花名册记录。
+func (s *StudentService) autoCreateRoster(student *models.IdxStudent) {
+	// 查找该学生所属团支部
+	var branch models.TyBranch
+	if err := s.repo.GetDB().Where("college_id = ? AND is_deleted = 0", *student.CollegeID).First(&branch).Error; err != nil {
+		return
+	}
+
+	// 检查是否已有花名册记录
+	var count int64
+	s.repo.GetDB().Model(&models.TyMemberRoster{}).Where("student_id = ? AND is_deleted = 0", student.ID).Count(&count)
+	if count > 0 {
+		return
+	}
+
+	rosterBizNo := fmt.Sprintf("TY-ROSTER-%d-%04d", student.JoinAt.Year(), student.ID)
+	roster := models.TyMemberRoster{
+		BizNo:         rosterBizNo,
+		StudentID:     student.ID,
+		BranchID:      branch.ID,
+		JoinAt:        *student.JoinAt,
+		Status:        "active",
+	}
+	if err := s.repo.GetDB().Create(&roster).Error; err != nil {
+		return
+	}
 }
 
 // UpdateStudentRequest 更新学生请求。

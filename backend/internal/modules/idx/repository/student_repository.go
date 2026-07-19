@@ -190,3 +190,8 @@ func (r *StudentRepository) GetClassByID(id int64) (*models.IdxClass, error) {
 	}
 	return &class, nil
 }
+
+// GetDB 返回底层数据库连接（用于跨模块操作，如自动创建团员花名册）。
+func (r *StudentRepository) GetDB() *gorm.DB {
+	return r.db
+}

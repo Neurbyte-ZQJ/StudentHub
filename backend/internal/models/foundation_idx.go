@@ -54,6 +54,8 @@ type IdxStudent struct {
 	BirthDate       *time.Time `gorm:"column:birth_date;type:date" json:"birth_date,omitempty"`
 	Ethnicity       string     `gorm:"column:ethnicity;type:text" json:"ethnicity"`
 	PoliticalStatus string     `gorm:"column:political_status;type:text;index:idx_idx_student_political_status" json:"political_status"`
+	JoinAt          *time.Time `gorm:"column:join_at;type:date" json:"join_at,omitempty"`
+	MemberCardNo    string     `gorm:"column:member_card_no;type:text" json:"member_card_no"`
 	CollegeID       *int64     `gorm:"column:college_id;index:idx_idx_student_college_id" json:"college_id,omitempty"`
 	MajorID         *int64     `gorm:"column:major_id" json:"major_id,omitempty"`
 	ClassID         *int64     `gorm:"column:class_id;index:idx_idx_student_class_id" json:"class_id,omitempty"`
