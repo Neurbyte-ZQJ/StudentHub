@@ -65,7 +65,9 @@
           </el-select>
         </el-form-item>
         <el-form-item label="团课证书编号" prop="course_cert_no">
-          <el-input v-model="createForm.course_cert_no" placeholder="请输入团课结业证书编号" />
+          <el-select v-model="createForm.course_cert_no" placeholder="请选择该学生的团课结业证书" style="width: 100%" filterable clearable @change="onCourseCertChange">
+            <el-option v-for="c in studentCourseOptions" :key="c.certificate_no" :label="`${c.course_name} · ${c.certificate_no} · 成绩${c.score ?? '—'}`" :value="c.certificate_no" />
+          </el-select>
         </el-form-item>
         <el-form-item label="培养联系人意见" prop="mentor_opinion">
           <el-input v-model="createForm.mentor_opinion" type="textarea" :rows="3" placeholder="培养联系人对该同志的评价意见" />
@@ -73,8 +75,21 @@
         <el-form-item label="辅导员意见" prop="counselor_opinion">
           <el-input v-model="createForm.counselor_opinion" type="textarea" :rows="3" placeholder="辅导员的推荐意见" />
         </el-form-item>
-        <el-form-item label="自传材料路径" prop="autobiography_path">
-          <el-input v-model="createForm.autobiography_path" placeholder="自传材料文件路径/编号" />
+        <el-form-item label="自传材料" prop="autobiography_path">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <el-upload
+              action="#"
+              :auto-upload="false"
+              :on-change="handleAutobiographyChange"
+              :on-remove="handleAutobiographyRemove"
+              :file-list="autobiographyFileList"
+              accept=".jpg,.jpeg,.png,.pdf"
+              :limit="1"
+            >
+              <el-button type="primary" size="small">选择文件</el-button>
+            </el-upload>
+            <span style="color: var(--sh-text-placeholder); font-size: 12px;">支持图片/PDF格式，不超过50MB</span>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -153,9 +168,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { tyDevelopmentObjectApi, tyPoliticalReviewApi, tyApplicationApi } from '@/api/ty'
+import { tyDevelopmentObjectApi, tyPoliticalReviewApi, tyApplicationApi, tyCourseRecordApi } from '@/api/ty'
+import { fileApi } from '@/api/file'
 import { formatDateTime } from '@/utils/datetime'
 
 // 状态映射
@@ -191,6 +207,78 @@ const createFormRules = {
   course_cert_no: [{ required: true, message: '请输入团课证书编号', trigger: 'blur' }]
 }
 const passedApps = ref([])
+
+// 自传材料上传
+const autobiographyFileList = ref([])
+const uploadingAutobiography = ref(false)
+
+// 自传材料文件选择
+async function handleAutobiographyChange(file) {
+  const isImage = file.raw.type.startsWith('image/')
+  const isPdf = file.raw.type === 'application/pdf'
+  if (!isImage && !isPdf) {
+    ElMessage.error('仅支持图片（jpg/png）或 PDF 格式')
+    autobiographyFileList.value = []
+    return false
+  }
+  if (file.raw.size > 50 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过 50MB')
+    autobiographyFileList.value = []
+    return false
+  }
+  // 上传文件
+  uploadingAutobiography.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file.raw)
+    formData.append('module', 'ty')
+    formData.append('biz_type', 'autobiography')
+    const res = await fileApi.upload(formData)
+    const fileKey = res?.key || res?.data?.key
+    if (fileKey) {
+      createForm.value.autobiography_path = fileKey
+      autobiographyFileList.value = [{ name: file.name, url: URL.createObjectURL(file.raw) }]
+      ElMessage.success('文件上传成功')
+    } else {
+      ElMessage.error('文件上传失败：未返回文件标识')
+      autobiographyFileList.value = []
+    }
+  } catch (e) {
+    ElMessage.error('文件上传失败')
+    autobiographyFileList.value = []
+  } finally {
+    uploadingAutobiography.value = false
+  }
+}
+
+// 自传材料文件移除
+function handleAutobiographyRemove() {
+  createForm.value.autobiography_path = ''
+  autobiographyFileList.value = []
+}
+
+// 学生的团课证书选项
+const studentCourseOptions = ref([])
+
+// 选择关联申请后，加载该学生的团课证书编号列表
+watch(() => createForm.value.application_id, async (appId) => {
+  studentCourseOptions.value = []
+  createForm.value.course_cert_no = ''
+  if (!appId) return
+  const app = passedApps.value.find(a => a.id === appId)
+  if (!app || !app.student_id) return
+  try {
+    const data = await tyCourseRecordApi.list({ student_id: app.student_id, page_size: 100 })
+    const courses = (data.items || []).filter(c => c.certificate_no)
+    studentCourseOptions.value = courses
+  } catch (e) {
+    console.error('加载团课证书列表失败', e)
+  }
+})
+
+function onCourseCertChange() {
+  // 选择证书后无需额外操作
+}
 
 // 审批弹窗
 const approveDialogVisible = ref(false)
@@ -236,6 +324,7 @@ function openCreateDialog() {
 
 async function handleCreate() {
   try { await createFormRef.value.validate() } catch { return }
+  if (uploadingAutobiography.value) { ElMessage.warning('文件正在上传中，请稍候'); return }
   createSaving.value = true
   try {
     await tyDevelopmentObjectApi.create(createForm.value)

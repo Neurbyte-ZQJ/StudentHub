@@ -113,8 +113,9 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" min-width="120">
+            <el-table-column label="操作" min-width="160">
               <template #default="{ row }">
+                <el-button v-if="canEditCourse" link type="primary" size="small" @click="openEditCourseDialog(row)">编辑</el-button>
                 <el-button v-if="!row.is_pass && canMarkPass" link type="success" size="small" @click="handlePassCourse(row.id)">标记结业</el-button>
               </template>
             </el-table-column>
@@ -282,6 +283,28 @@
       </template>
     </el-dialog>
 
+    <!-- 编辑团课弹窗（录入成绩、证书编号） -->
+    <el-dialog v-model="editCourseDialogVisible" title="编辑团课记录" width="500px" destroy-on-close>
+      <el-form ref="editCourseFormRef" :model="editCourseForm" label-width="100px">
+        <el-form-item label="学生">
+          <el-input :value="editCourseForm.student_display" disabled />
+        </el-form-item>
+        <el-form-item label="课程名称">
+          <el-input :value="editCourseForm.course_name" disabled />
+        </el-form-item>
+        <el-form-item label="成绩" prop="score">
+          <el-input-number v-model="editCourseForm.score" :min="0" :max="100" :step="1" placeholder="请输入成绩（0-100）" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="证书编号" prop="certificate_no">
+          <el-input v-model="editCourseForm.certificate_no" placeholder="结业证书编号" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editCourseDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleUpdateCourse" :loading="editCourseSaving">保存</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 新增思想汇报弹窗 -->
     <el-dialog v-model="thoughtDialogVisible" title="新增思想汇报" width="700px" destroy-on-close>
       <el-form ref="thoughtFormRef" :model="thoughtForm" :rules="thoughtFormRules" label-width="100px">
@@ -399,6 +422,9 @@ const isStudentSelf = computed(() => {
 // 是否可标记结业（教师/管理员/团支书）
 const canMarkPass = computed(() => currentUserRoles.value.some(r =>
   ['R-SY-ADMIN', 'R-SY-LEAGUE', 'R-COL-LEAGUE', 'R-COL-COUN', 'R-STU-LEAGUE'].includes(r)))
+
+// 是否可编辑团课（同 canMarkPass）
+const canEditCourse = computed(() => canMarkPass.value)
 
 const activeTab = ref('link')
 
@@ -614,6 +640,36 @@ async function handlePassCourse(id) {
     ElMessage.success('已标记结业')
     fetchCourses()
   } catch (e) { if (e !== 'cancel') {} }
+}
+
+// 编辑团课（录入成绩、证书编号）
+const editCourseDialogVisible = ref(false)
+const editCourseSaving = ref(false)
+const editCourseFormRef = ref()
+const editCourseForm = ref({ id: null, student_display: '', course_name: '', score: null, certificate_no: '' })
+
+function openEditCourseDialog(row) {
+  editCourseForm.value = {
+    id: row.id,
+    student_display: `${row.student_no} ${row.student_name}`,
+    course_name: row.course_name,
+    score: row.score,
+    certificate_no: row.certificate_no || ''
+  }
+  editCourseDialogVisible.value = true
+}
+
+async function handleUpdateCourse() {
+  editCourseSaving.value = true
+  try {
+    const payload = {}
+    if (editCourseForm.value.score != null) payload.score = editCourseForm.value.score
+    if (editCourseForm.value.certificate_no) payload.certificate_no = editCourseForm.value.certificate_no
+    await tyCourseRecordApi.update(editCourseForm.value.id, payload)
+    ElMessage.success('团课记录已更新')
+    editCourseDialogVisible.value = false
+    fetchCourses()
+  } catch (e) {} finally { editCourseSaving.value = false }
 }
 
 // ========== 思想汇报 ==========

@@ -124,7 +124,20 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="材料上传" prop="document_path">
-          <el-input v-model="createForm.document_path" placeholder="材料文件路径/编号" />
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <el-upload
+              action="#"
+              :auto-upload="false"
+              :on-change="handleDocumentChange"
+              :on-remove="handleDocumentRemove"
+              :file-list="documentFileList"
+              accept=".jpg,.jpeg,.png,.pdf"
+              :limit="1"
+            >
+              <el-button type="primary" size="small">选择文件</el-button>
+            </el-upload>
+            <span style="color: var(--sh-text-placeholder); font-size: 12px;">支持图片/PDF格式，不超过50MB</span>
+          </div>
         </el-form-item>
         <el-form-item label="延长考察" prop="is_extend_3m">
           <el-switch v-model="createForm.is_extend_3m" :active-value="1" :inactive-value="0" />
@@ -143,6 +156,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { tyPoliticalReviewApi, tyDevelopmentObjectApi } from '@/api/ty'
+import { fileApi } from '@/api/file'
 
 // 映射
 const relationMap = { self: '本人', parent: '父母/监护人', spouse: '配偶' }
@@ -189,6 +203,54 @@ const createFormRules = {
   conclusion: [{ required: true, message: '请选择审查结论', trigger: 'change' }]
 }
 
+// 材料上传
+const documentFileList = ref([])
+const uploadingDocument = ref(false)
+
+// 材料文件选择
+async function handleDocumentChange(file) {
+  const isImage = file.raw.type.startsWith('image/')
+  const isPdf = file.raw.type === 'application/pdf'
+  if (!isImage && !isPdf) {
+    ElMessage.error('仅支持图片（jpg/png）或 PDF 格式')
+    documentFileList.value = []
+    return false
+  }
+  if (file.raw.size > 50 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过 50MB')
+    documentFileList.value = []
+    return false
+  }
+  uploadingDocument.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file.raw)
+    formData.append('module', 'ty')
+    formData.append('biz_type', 'political_review')
+    const res = await fileApi.upload(formData)
+    const fileKey = res?.key || res?.data?.key
+    if (fileKey) {
+      createForm.value.document_path = fileKey
+      documentFileList.value = [{ name: file.name, url: URL.createObjectURL(file.raw) }]
+      ElMessage.success('文件上传成功')
+    } else {
+      ElMessage.error('文件上传失败：未返回文件标识')
+      documentFileList.value = []
+    }
+  } catch (e) {
+    ElMessage.error('文件上传失败')
+    documentFileList.value = []
+  } finally {
+    uploadingDocument.value = false
+  }
+}
+
+// 材料文件移除
+function handleDocumentRemove() {
+  createForm.value.document_path = ''
+  documentFileList.value = []
+}
+
 // 获取列表
 async function fetchList() {
   loading.value = true
@@ -225,6 +287,7 @@ function openCreateDialog() {
     document_path: '',
     is_extend_3m: 0
   }
+  documentFileList.value = []
   // 如果已选了筛选，自动填充
   if (filterDevelopmentId.value) {
     createForm.value.development_id = filterDevelopmentId.value
@@ -234,6 +297,7 @@ function openCreateDialog() {
 
 async function handleCreate() {
   try { await createFormRef.value.validate() } catch { return }
+  if (uploadingDocument.value) { ElMessage.warning('文件正在上传中，请稍候'); return }
   createSaving.value = true
   try {
     await tyPoliticalReviewApi.create(createForm.value)

@@ -50,7 +50,7 @@
     </el-card>
 
     <!-- 创建发展大会弹窗 -->
-    <el-dialog v-model="createDialogVisible" title="召开发展大会" width="680px" destroy-on-close>
+    <el-dialog v-model="createDialogVisible" title="召开发展大会" width="800px" destroy-on-close>
       <el-alert
         title="发展大会通过后，将自动为该同志创建团员花名册记录，进入预备团员阶段。"
         type="info"
@@ -94,17 +94,17 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="赞成票数" prop="approve_count">
-              <el-input-number v-model="createForm.approve_count" :min="0" :max="999" style="width: 100%" />
+              <el-input-number v-model="createForm.approve_count" :min="0" :max="999" style="width: 180px" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="反对票数" prop="against_count">
-              <el-input-number v-model="createForm.against_count" :min="0" :max="999" style="width: 100%" />
+              <el-input-number v-model="createForm.against_count" :min="0" :max="999" style="width: 180px" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="弃权票数" prop="abstain_count">
-              <el-input-number v-model="createForm.abstain_count" :min="0" :max="999" style="width: 100%" />
+              <el-input-number v-model="createForm.abstain_count" :min="0" :max="999" style="width: 180px" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -119,7 +119,20 @@
         </el-form-item>
 
         <el-form-item label="入团志愿书" prop="volunteer_form_path">
-          <el-input v-model="createForm.volunteer_form_path" placeholder="入团志愿书材料路径/编号" />
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <el-upload
+              action="#"
+              :auto-upload="false"
+              :on-change="handleVolunteerFormChange"
+              :on-remove="handleVolunteerFormRemove"
+              :file-list="volunteerFormFileList"
+              accept=".jpg,.jpeg,.png,.pdf"
+              :limit="1"
+            >
+              <el-button type="primary" size="small">选择文件</el-button>
+            </el-upload>
+            <span style="color: var(--sh-text-placeholder); font-size: 12px;">支持图片/PDF格式，不超过50MB</span>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -134,6 +147,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { tyDevelopmentMeetingApi, tyDevelopmentObjectApi } from '@/api/ty'
+import { fileApi } from '@/api/file'
 import { formatDateTime } from '@/utils/datetime'
 
 // 列表数据
@@ -167,7 +181,55 @@ const createFormRules = {
   expected_count: [{ required: true, message: '请输入应到人数', trigger: 'blur' }],
   actual_count: [{ required: true, message: '请输入实到人数', trigger: 'blur' }],
   decision: [{ required: true, message: '请选择决议结果', trigger: 'change' }],
-  volunteer_form_path: [{ required: true, message: '请填写入团志愿书路径', trigger: 'blur' }]
+  volunteer_form_path: [{ required: true, message: '请上传入团志愿书', trigger: 'change' }]
+}
+
+// 入团志愿书上传
+const volunteerFormFileList = ref([])
+const uploadingVolunteerForm = ref(false)
+
+// 入团志愿书文件选择
+async function handleVolunteerFormChange(file) {
+  const isImage = file.raw.type.startsWith('image/')
+  const isPdf = file.raw.type === 'application/pdf'
+  if (!isImage && !isPdf) {
+    ElMessage.error('仅支持图片（jpg/png）或 PDF 格式')
+    volunteerFormFileList.value = []
+    return false
+  }
+  if (file.raw.size > 50 * 1024 * 1024) {
+    ElMessage.error('文件大小不能超过 50MB')
+    volunteerFormFileList.value = []
+    return false
+  }
+  uploadingVolunteerForm.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file.raw)
+    formData.append('module', 'ty')
+    formData.append('biz_type', 'volunteer_form')
+    const res = await fileApi.upload(formData)
+    const fileKey = res?.key || res?.data?.key
+    if (fileKey) {
+      createForm.value.volunteer_form_path = fileKey
+      volunteerFormFileList.value = [{ name: file.name, url: URL.createObjectURL(file.raw) }]
+      ElMessage.success('文件上传成功')
+    } else {
+      ElMessage.error('文件上传失败：未返回文件标识')
+      volunteerFormFileList.value = []
+    }
+  } catch (e) {
+    ElMessage.error('文件上传失败')
+    volunteerFormFileList.value = []
+  } finally {
+    uploadingVolunteerForm.value = false
+  }
+}
+
+// 入团志愿书文件移除
+function handleVolunteerFormRemove() {
+  createForm.value.volunteer_form_path = ''
+  volunteerFormFileList.value = []
 }
 
 // 获取列表
@@ -207,11 +269,13 @@ function openCreateDialog() {
     decision: '',
     volunteer_form_path: ''
   }
+  volunteerFormFileList.value = []
   createDialogVisible.value = true
 }
 
 async function handleCreate() {
   try { await createFormRef.value.validate() } catch { return }
+  if (uploadingVolunteerForm.value) { ElMessage.warning('文件正在上传中，请稍候'); return }
 
   // 校验：决议为通过时给出联动提示
   if (createForm.value.decision === 'pass') {
@@ -253,6 +317,30 @@ onMounted(() => {
 }
 .rd-table :deep(.el-table__header-wrapper table),
 .rd-table :deep(.el-table__body-wrapper table) {
+  width: 100% !important;
+}
+
+/* 修复 el-input-number 按钮样式 - 确保加减按钮颜色正常 */
+:deep(.el-input-number .el-input-number__decrease),
+:deep(.el-input-number .el-input-number__increase) {
+  color: #606266 !important;
+}
+:deep(.el-input-number .el-input-number__decrease:hover),
+:deep(.el-input-number .el-input-number__increase:hover) {
+  color: #409eff !important;
+}
+:deep(.el-input-number .el-input-number__decrease.is-disabled),
+:deep(.el-input-number .el-input-number__increase.is-disabled) {
+  color: #c0c4cc !important;
+  cursor: not-allowed !important;
+}
+/* 修复 el-input-number 内部输入区域被全局样式挤压的问题 */
+:deep(.el-input-number .el-input) {
+  flex: 1 !important;
+  min-width: 40px !important;
+}
+:deep(.el-input-number .el-input__wrapper) {
+  min-width: 40px !important;
   width: 100% !important;
 }
 </style>

@@ -170,6 +170,18 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-row v-if="form.political_status === 'member'" :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="入团时间">
+              <el-date-picker v-model="form.join_at" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="团员证号">
+              <el-input v-model="form.member_card_no" />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <el-button @click="formVisible = false">取消</el-button>
@@ -226,6 +238,8 @@ const form = ref({
   phone: '',
   email: '',
   political_status: 'masses',
+  join_at: '',
+  member_card_no: '',
   enrollment_at: ''
 })
 
@@ -332,6 +346,8 @@ function showForm(row) {
       phone: row.phone_masked || '',
       email: row.email,
       political_status: row.political_status,
+      join_at: row.join_at || '',
+      member_card_no: row.member_card_no || '',
       enrollment_at: row.enrollment_at
     }
   } else {
