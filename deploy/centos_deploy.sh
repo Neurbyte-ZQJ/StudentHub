@@ -58,6 +58,37 @@ if ! systemctl is-active --quiet docker 2>/dev/null; then
 fi
 log_info "Docker 版本: $(docker --version)"
 
+# 1.2.5 配置 Docker 镜像加速 (阿里云)
+DAEMON_JSON="/etc/docker/daemon.json"
+if [ ! -f "$DAEMON_JSON" ] || ! grep -q "mirrors" "$DAEMON_JSON" 2>/dev/null; then
+    log_warn "未配置 Docker 镜像加速, 正在设置阿里云加速器..."
+    mkdir -p /etc/docker
+    if [ -f "$DAEMON_JSON" ]; then
+        # 已有文件但无 mirrors, 备份后重写
+        cp "$DAEMON_JSON" "${DAEMON_JSON}.bak.$(date +%s)"
+    fi
+    cat > "$DAEMON_JSON" << 'EOF'
+{
+  "registry-mirrors": [
+    "https://registry.aliyuncs.com",
+    "https://hub-mirror.c.163.com",
+    "https://mirror.baidubce.com"
+  ],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "50m",
+    "max-file": "10"
+  }
+}
+EOF
+    systemctl daemon-reload
+    systemctl restart docker
+    sleep 3
+    log_info "Docker 镜像加速已配置并重启服务"
+else
+    log_info "Docker 镜像加速已配置"
+fi
+
 # 1.3 检查 Docker Compose (支持 v1 和 v2)
 COMPOSE_CMD=""
 if docker compose version >/dev/null 2>&1; then
@@ -159,7 +190,7 @@ log_info "[4/6] 构建 Docker 镜像 (可能需要 5-15 分钟)..."
 docker image prune -f >/dev/null 2>&1 || true
 
 BUILD_START=$(date +%s)
-$COMPOSE_CMD build --no-cache --pull 2>&1 | while IFS= read -r line; do
+$COMPOSE_CMD build 2>&1 | while IFS= read -r line; do
     echo "  $line"
 done
 BUILD_END=$(date +%s)
@@ -173,8 +204,8 @@ log_info "[5/6] 启动 StudentHub 服务..."
 
 $COMPOSE_CMD up -d --remove-orphans
 
-# 等待容器启动
-sleep 5
+# 等待容器启动（数据库迁移 + seed 数据需要时间）
+sleep 10
 
 # =============================================================================
 # Step 6 · 健康检查
@@ -182,7 +213,7 @@ sleep 5
 log_info "[6/6] 健康检查..."
 
 HEALTH_URL="http://127.0.0.1:${HOST_PORT}/api/v1/healthz"
-MAX_WAIT=90
+MAX_WAIT=120
 WAITED=0
 
 while [ "$WAITED" -lt "$MAX_WAIT" ]; do
@@ -190,8 +221,8 @@ while [ "$WAITED" -lt "$MAX_WAIT" ]; do
         log_info "健康检查通过! (${WAITED}s)"
         break
     fi
-    sleep 3
-    WAITED=$((WAITED + 3))
+    sleep 5
+    WAITED=$((WAITED + 5))
     echo "  等待中... ${WAITED}s"
 done
 

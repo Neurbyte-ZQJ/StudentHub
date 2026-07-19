@@ -549,23 +549,40 @@ func SeedTyBranches(db *gorm.DB, zlog *zap.Logger) {
 		return
 	}
 
+	// 获取所有专业，为每个专业创建团支部
+	var majors []models.SysMajor
+	db.Where("is_deleted = 0").Find(&majors)
+
 	zlog.Info("seeding ty_branch data...")
 
-	// 为每个院系创建一个团支部
-	branches := make([]models.TyBranch, 0, len(colleges))
-	for i, c := range colleges {
-		bizNo := fmt.Sprintf("TY-B-%04d", i+1)
+	branches := make([]models.TyBranch, 0)
+	idx := 0
+	// 为每个院系创建团支部
+	for _, c := range colleges {
+		bizNo := fmt.Sprintf("TY-B-%04d", idx+1)
 		branches = append(branches, models.TyBranch{
 			BizNo:               bizNo,
 			Name:                c.Name + "团支部",
 			CollegeID:           c.ID,
+			ExpectedMemberCount: 50,
+		})
+		idx++
+	}
+	// 为每个专业创建团支部
+	for _, m := range majors {
+		bizNo := fmt.Sprintf("TY-B-%04d", idx+1)
+		branches = append(branches, models.TyBranch{
+			BizNo:               bizNo,
+			Name:                m.Name + "团支部",
+			CollegeID:           m.CollegeID,
 			ExpectedMemberCount: 30,
 		})
+		idx++
 	}
 
-	for _, b := range branches {
-		if err := db.Create(&b).Error; err != nil {
-			zlog.Warn("seed ty_branch failed", zap.String("biz_no", b.BizNo), zap.Error(err))
+	for i := range branches {
+		if err := db.Create(&branches[i]).Error; err != nil {
+			zlog.Warn("seed ty_branch failed", zap.String("biz_no", branches[i].BizNo), zap.Error(err))
 		}
 	}
 	zlog.Info("seed ty_branches completed", zap.Int("count", len(branches)))
@@ -743,6 +760,18 @@ func SeedStudents(db *gorm.DB, zlog *zap.Logger) {
 				Email:           fmt.Sprintf("%s@example.edu.cn", studentNo),
 				EnrollmentAt:    &enrollDate,
 				Status:          "enrolled",
+			}
+			// 为共青团员设置入团时间和团员证号（中学入团，约14岁）
+			if politicalStatus == "member" {
+				joinYear := class.Grade - 2 // 中学入团，约14岁
+				joinMonth := 3 + (i%10)     // 3-12月
+				if joinMonth > 12 {
+					joinMonth = 12
+				}
+				joinDay := 15
+				joinDate, _ := time.Parse("2006-01-02", fmt.Sprintf("%d-%02d-%02d", joinYear, joinMonth, joinDay))
+				student.JoinAt = &joinDate
+				student.MemberCardNo = fmt.Sprintf("TYC-%d-%04d", joinYear, class.ID*100+int64(i)+1)
 			}
 			if err := db.Create(&student).Error; err != nil {
 				zlog.Warn("seed student failed", zap.String("student_no", student.StudentNo), zap.Error(err))
@@ -1126,10 +1155,11 @@ func SeedTyApplicationForLisi(db *gorm.DB, zlog *zap.Logger) {
 		return
 	}
 
-	// 查找李四的学生记录
+	// 查找任意一个非团员学生（用于演示入团申请）
 	var student models.IdxStudent
-	if err := db.Where("student_no = ? AND is_deleted = 0", "20231001").First(&student).Error; err != nil {
-		zlog.Warn("seed ty_application for lisi skipped: student not found", zap.Error(err))
+	if err := db.Where("is_deleted = 0 AND (political_status = ? OR political_status = ?)", "masses", "member").
+		Order("id ASC").First(&student).Error; err != nil {
+		zlog.Warn("seed ty_application skipped: no eligible student found", zap.Error(err))
 		return
 	}
 
@@ -1222,7 +1252,7 @@ func SeedTyApplicationForLisi(db *gorm.DB, zlog *zap.Logger) {
 		}
 	}
 
-	// 更新李四的政治面貌为"入团积极分子"（已通过入团申请但尚未完成推优）
+	// 更新该学生的政治面貌为"入团积极分子"
 	db.Model(&models.IdxStudent{}).Where("id = ?", student.ID).Update("political_status", "activist")
 
 	zlog.Info("seed ty_application for lisi completed",
@@ -1498,4 +1528,868 @@ func seedCmpScores(db *gorm.DB, zlog *zap.Logger) {
 		}
 	}
 	zlog.Info("seed cmp scores completed", zap.Int("count", len(students)))
+}
+
+// DeduplicateExistingData 启动时清理重复数据（在所有种子函数之前调用）。
+// 入团申请和团课记录按 student_id 去重，每名学生只保留 ID 最大的一条，其余软删。
+func DeduplicateExistingData(db *gorm.DB, zlog *zap.Logger) {
+	zlog.Info("deduplicating existing data...")
+
+	// 入团申请去重
+	var dupTyApps []models.TyApplication
+	db.Where("is_deleted = 0").Order("student_id ASC, id DESC").Find(&dupTyApps)
+	seenStudents := make(map[int64]bool)
+	removedTyAppCount := 0
+	for _, app := range dupTyApps {
+		if seenStudents[app.StudentID] {
+			db.Model(&models.TyApplication{}).Where("id = ?", app.ID).Update("is_deleted", 1)
+			removedTyAppCount++
+		} else {
+			seenStudents[app.StudentID] = true
+		}
+	}
+	if removedTyAppCount > 0 {
+		zlog.Info("deduplicated ty_applications", zap.Int("removed", removedTyAppCount))
+	}
+
+	// 团课记录去重
+	var dupCourses []models.TyCourseRecord
+	db.Where("is_deleted = 0").Order("student_id ASC, id DESC").Find(&dupCourses)
+	seenCourseStudents := make(map[int64]bool)
+	removedCourseCount := 0
+	for _, course := range dupCourses {
+		if seenCourseStudents[course.StudentID] {
+			db.Model(&models.TyCourseRecord{}).Where("id = ?", course.ID).Update("is_deleted", 1)
+			removedCourseCount++
+		} else {
+			seenCourseStudents[course.StudentID] = true
+		}
+	}
+	if removedCourseCount > 0 {
+		zlog.Info("deduplicated ty_course_records", zap.Int("removed", removedCourseCount))
+	}
+
+	// 社团去重：按名称去重，同名只保留 ID 最大的一条
+	var dupAssocs []models.StAssociation
+	db.Where("is_deleted = 0").Order("name ASC, id DESC").Find(&dupAssocs)
+	seenAssocNames := make(map[string]bool)
+	removedAssocCount := 0
+	for _, assoc := range dupAssocs {
+		if seenAssocNames[assoc.Name] {
+			db.Model(&models.StAssociation{}).Where("id = ?", assoc.ID).Update("is_deleted", 1)
+			removedAssocCount++
+		} else {
+			seenAssocNames[assoc.Name] = true
+		}
+	}
+	if removedAssocCount > 0 {
+		zlog.Info("deduplicated st_associations", zap.Int("removed", removedAssocCount))
+	}
+
+	// 勤工岗位去重：按标题去重，同标题只保留 ID 最大的一条
+	var dupPositions []models.QgPosition
+	db.Where("is_deleted = 0").Order("title ASC, id DESC").Find(&dupPositions)
+	seenPosTitles := make(map[string]bool)
+	removedPosCount := 0
+	for _, pos := range dupPositions {
+		if seenPosTitles[pos.Title] {
+			db.Model(&models.QgPosition{}).Where("id = ?", pos.ID).Update("is_deleted", 1)
+			removedPosCount++
+		} else {
+			seenPosTitles[pos.Title] = true
+		}
+	}
+	if removedPosCount > 0 {
+		zlog.Info("deduplicated qg_positions", zap.Int("removed", removedPosCount))
+	}
+
+	// 招新计划去重：按 (association_id, season, academic_year) 组合去重，同一组合只保留 ID 最大的一条
+	var dupPlans []models.StRecruitPlan
+	db.Where("is_deleted = 0").Order("association_id ASC, season ASC, academic_year ASC, id DESC").Find(&dupPlans)
+	seenPlanKeys := make(map[string]bool)
+	removedPlanCount := 0
+	for _, plan := range dupPlans {
+		key := fmt.Sprintf("%d|%s|%s", plan.AssociationID, plan.Season, plan.AcademicYear)
+		if seenPlanKeys[key] {
+			db.Model(&models.StRecruitPlan{}).Where("id = ?", plan.ID).Update("is_deleted", 1)
+			removedPlanCount++
+		} else {
+			seenPlanKeys[key] = true
+		}
+	}
+	if removedPlanCount > 0 {
+		zlog.Info("deduplicated st_recruit_plans", zap.Int("removed", removedPlanCount))
+	}
+}
+
+// SeedExtraTestData 批量补充各模块测试数据（在基础种子之后运行，无去重检查）。
+func SeedExtraTestData(db *gorm.DB, zlog *zap.Logger) {
+	zlog.Info("seeding extra test data...")
+
+	// 获取基础数据
+	var students []models.IdxStudent
+	db.Where("is_deleted = 0").Order("id ASC").Find(&students)
+	if len(students) == 0 {
+		zlog.Warn("extra test data skipped: no students")
+		return
+	}
+
+	var branches []models.TyBranch
+	db.Where("is_deleted = 0").Order("id ASC").Find(&branches)
+
+	var colleges []models.SysCollege
+	db.Where("is_deleted = 0").Order("id ASC").Find(&colleges)
+
+	var buildings []models.IdxDormBuilding
+	db.Where("is_deleted = 0").Order("id ASC").Find(&buildings)
+
+	var admin models.SysUser
+	db.Where("username = ? AND is_deleted = 0", "admin").First(&admin)
+	var counselorUser models.SysUser
+	db.Where("username = ? AND is_deleted = 0", "counselor01").First(&counselorUser)
+	var collegeUser models.SysUser
+	db.Where("username = ? AND is_deleted = 0", "college01").First(&collegeUser)
+	var schoolUser models.SysUser
+	db.Where("username = ? AND is_deleted = 0", "league01").First(&schoolUser)
+
+	now := time.Now()
+
+	// ========== TY: 更多入团申请（按学号去重，每名学生只能有一条申请） ==========
+	tyAppCount := 0
+	var existingTyApps int64
+	db.Model(&models.TyApplication{}).Where("is_deleted = 0").Count(&existingTyApps)
+
+	// 预加载已有申请的学生 ID（去重）
+	var existingStudentIDs []int64
+	db.Model(&models.TyApplication{}).Where("is_deleted = 0").Pluck("student_id", &existingStudentIDs)
+	existingStudentIDSet := make(map[int64]bool)
+	for _, sid := range existingStudentIDs {
+		existingStudentIDSet[sid] = true
+	}
+
+	// 预加载已有团课记录的学生 ID（去重）
+	var existingCourseStudentIDs []int64
+	db.Model(&models.TyCourseRecord{}).Where("is_deleted = 0").Pluck("student_id", &existingCourseStudentIDs)
+	existingCourseStudentIDSet := make(map[int64]bool)
+	for _, sid := range existingCourseStudentIDs {
+		existingCourseStudentIDSet[sid] = true
+	}
+
+	statement := "我志愿加入中国共产主义青年团，坚决拥护中国共产党的领导，遵守团的章程，执行团的决议，履行团员义务，严守团的纪律，勤奋学习，积极工作，吃苦在前，享受在后，为共产主义事业而奋斗。通过对团章的系统学习，我对共青团的性质、宗旨和任务有了更加深刻的认识。共青团是中国共产党领导的先进青年的群团组织，是广大青年在实践中学习中国特色社会主义和共产主义的学校，是党的助手和后备军。作为一名新时代的大学生，我深知自己肩负的历史使命和时代责任。在思想方面，我始终坚持以习近平新时代中国特色社会主义思想为指导，认真学习党的二十大精神，深刻领会新时代中国特色社会主义思想的核心要义和精神实质，不断增强四个意识、坚定四个自信、做到两个维护。在学习方面，我始终保持严谨求实的学风，认真对待每一门课程，成绩优异，多次获得奖学金。在工作方面，我积极参与班级建设和集体活动，主动承担力所能及的工作任务，担任班级干部，为同学们服务。在生活方面，我严格要求自己，养成良好的生活习惯，团结同学，乐于助人。如果能够加入中国共产主义青年团，我将更加严格地要求自己，在学习和工作中发挥模范带头作用，以实际行动践行团员的责任与担当，为共产主义事业贡献青春力量。"
+
+	statuses := []string{"S0", "S0", "S0", "S1", "S1", "S2", "S2", "S3", "S3", "S3", "S3", "S4"}
+	for i, status := range statuses {
+		if i >= len(students)-5 {
+			break
+		}
+		student := students[i+5] // 跳过前5个（已有数据）
+
+		// 按学号去重：该学生已有申请则跳过
+		if existingStudentIDSet[student.ID] {
+			continue
+		}
+		existingStudentIDSet[student.ID] = true // 标记为已创建
+
+		collegeID := int64(0)
+		if student.CollegeID != nil {
+			collegeID = *student.CollegeID
+		}
+		branchIdx := int(collegeID) % len(branches)
+		if branchIdx < 0 {
+			branchIdx = 0
+		}
+		branch := branches[branchIdx]
+
+		monthsAgo := i * 2
+		applyDate := now.AddDate(0, -monthsAgo, -(i * 3))
+		bizNo := fmt.Sprintf("TY-%d-%04d", now.Year(), int(existingTyApps)+i+1)
+
+		app := models.TyApplication{
+			BizNo:         bizNo,
+			StudentID:     student.ID,
+			BranchID:      branch.ID,
+			ApplyDate:     applyDate,
+			SelfStatement: statement,
+			FamilyMembers: `[{"name":"父","relation":"父亲","political_status":"群众"},{"name":"母","relation":"母亲","political_status":"群众"}]`,
+			RewardsPunish: "在校期间表现良好，无违纪记录",
+			Status:        status,
+			CreatedBy:     &student.ID,
+		}
+		if status == "S4" {
+			app.RejectReason = "申请材料不完整，请补充后重新提交。"
+		}
+		if err := db.Create(&app).Error; err != nil {
+			continue
+		}
+		tyAppCount++
+
+		// 审批记录
+		if status == "S1" || status == "S2" || status == "S3" {
+			db.Create(&models.TyApprovalRecord{
+				ApplicationID: app.ID, Module: "application", TargetID: app.ID,
+				Step: "counselor", ApproverID: counselorUser.ID, ApproverName: "张辅导员",
+				ApproverRole: "R-COL-COUN", Result: "approve",
+				Opinion:    "该生思想端正，学习认真，同意推荐。",
+				FromStatus: "S1", ToStatus: "S2", OccurredAt: applyDate.AddDate(0, 0, 3),
+			})
+		}
+		if status == "S2" || status == "S3" {
+			db.Create(&models.TyApprovalRecord{
+				ApplicationID: app.ID, Module: "application", TargetID: app.ID,
+				Step: "college", ApproverID: collegeUser.ID, ApproverName: "李院系团委",
+				ApproverRole: "R-COL-LEAGUE", Result: "approve",
+				Opinion:    "经院系团委复核，材料完整，审核通过。",
+				FromStatus: "S2", ToStatus: "S3", OccurredAt: applyDate.AddDate(0, 0, 5),
+			})
+		}
+		if status == "S3" {
+			db.Create(&models.TyApprovalRecord{
+				ApplicationID: app.ID, Module: "application", TargetID: app.ID,
+				Step: "school", ApproverID: schoolUser.ID, ApproverName: "王校团委",
+				ApproverRole: "R-SY-LEAGUE", Result: "approve",
+				Opinion:    "经校团委终审，批准通过入团申请。",
+				FromStatus: "S2", ToStatus: "S3", OccurredAt: applyDate.AddDate(0, 0, 7),
+			})
+			// 培养联系人
+			mentorIdx := (i + 3) % len(students)
+			db.Create(&models.TyCultivationLink{
+				ApplicationID: app.ID, MentorStudentID: students[mentorIdx].ID,
+				MentorType: "league_member", StartAt: applyDate.AddDate(0, 1, 0), IsActive: 1,
+			})
+			// 思想汇报
+			for m := 1; m <= 3; m++ {
+				db.Create(&models.TyThoughtReport{
+					BizNo: fmt.Sprintf("TY-RPT-%d-%04d", now.Year(), int(existingTyApps)*10+i*10+m),
+					ApplicationID: app.ID, StudentID: student.ID,
+					Title: fmt.Sprintf("第%d季度思想汇报", m),
+					Content: fmt.Sprintf("本季度我认真学习了党的理论知识，积极参加团组织的各项活动。%s", statement[:100]),
+					Quarter: fmt.Sprintf("%d-Q%d", now.Year(), m), IsQualified: 1,
+				})
+			}
+			// 团课记录（已结业，按学号去重）
+			if !existingCourseStudentIDSet[student.ID] {
+				score := 85 + i%15
+				certNo := fmt.Sprintf("CERT-%d-%04d", now.Year(), int(existingTyApps)+i+1)
+				db.Create(&models.TyCourseRecord{
+					StudentID: student.ID, CourseName: "共青团基础知识培训",
+					Semester: "2025-2026-1", StudyAt: applyDate.AddDate(0, 2, 0),
+					Score: &score, CertificateNo: certNo, IsPass: 1,
+				})
+				existingCourseStudentIDSet[student.ID] = true
+			}
+		}
+	}
+
+	// 补充：对已有"无成绩"的团课记录填充分数、证书编号，并标记为已结业
+	var emptyCourses []models.TyCourseRecord
+	db.Where("is_deleted = 0 AND score IS NULL").Order("id ASC").Find(&emptyCourses)
+	for idx, course := range emptyCourses {
+		// 第一条记录设置成绩低于80分
+		s := 75
+		if idx > 0 {
+			s = 80 + idx%20
+		}
+		cert := fmt.Sprintf("CERT-%d-%04d", now.Year(), course.ID)
+		db.Model(&models.TyCourseRecord{}).Where("id = ?", course.ID).
+			Updates(map[string]interface{}{"score": s, "certificate_no": cert, "is_pass": 1})
+	}
+	if len(emptyCourses) > 0 {
+		zlog.Info("patched existing course records with score/cert and marked as passed", zap.Int("count", len(emptyCourses)))
+	}
+
+	// 额外添加几条未审核的团课记录（无成绩、无证书、未结业，按学号去重）
+	for i := 0; i < 3; i++ {
+		stuIdx := (i + 1) % len(students)
+		student := students[stuIdx]
+		if existingCourseStudentIDSet[student.ID] {
+			continue
+		}
+		db.Create(&models.TyCourseRecord{
+			StudentID:  student.ID,
+			CourseName: "共青团基础知识培训",
+			Semester:   "2025-2026-2",
+			StudyAt:    now.AddDate(0, 0, -(i+5)),
+			IsPass:     0,
+		})
+		existingCourseStudentIDSet[student.ID] = true
+	}
+
+	zlog.Info("extra ty_applications seeded", zap.Int("count", tyAppCount))
+
+	// ========== TY: 为 S3 已通过的入团申请创建发展对象+发展大会+团员花名册 ==========
+	var passedApps []models.TyApplication
+	db.Where("is_deleted = 0 AND status = ?", "S3").Order("id ASC").Find(&passedApps)
+
+	// 预加载已有发展对象、发展大会、花名册的数据
+	var existingDevObjAppIDs []int64
+	db.Model(&models.TyDevelopmentObject{}).Where("is_deleted = 0").Pluck("application_id", &existingDevObjAppIDs)
+	existingDevObjAppIDSet := make(map[int64]bool)
+	for _, aid := range existingDevObjAppIDs {
+		existingDevObjAppIDSet[aid] = true
+	}
+
+	var existingMeetingDevIDs []int64
+	db.Model(&models.TyDevelopmentMeeting{}).Where("is_deleted = 0").Pluck("development_id", &existingMeetingDevIDs)
+	existingMeetingDevIDSet := make(map[int64]bool)
+	for _, did := range existingMeetingDevIDs {
+		existingMeetingDevIDSet[did] = true
+	}
+
+	var existingRosterStudentIDs []int64
+	db.Model(&models.TyMemberRoster{}).Where("is_deleted = 0").Pluck("student_id", &existingRosterStudentIDs)
+	existingRosterStudentIDSet := make(map[int64]bool)
+	for _, sid := range existingRosterStudentIDs {
+		existingRosterStudentIDSet[sid] = true
+	}
+
+	devObjCount := 0
+	meetingCount := 0
+	rosterCount := 0
+
+	for _, app := range passedApps {
+		// 跳过已有发展对象的申请
+		if existingDevObjAppIDSet[app.ID] {
+			continue
+		}
+
+		// 创建发展对象（S4 已通过）
+		devObj := models.TyDevelopmentObject{
+			ApplicationID:    app.ID,
+			CourseCertNo:     fmt.Sprintf("CERT-%d-%04d", now.Year(), app.ID),
+			MentorOpinion:    "该同志在培养期间表现优秀，思想觉悟高，学习刻苦，工作积极，具备团员发展条件，同意推荐为发展对象。",
+			CounselorOpinion: "经辅导员考察，该同志政治立场坚定，品行端正，群众基础良好，符合发展对象条件，同意推荐。",
+			Status:           "S4",
+		}
+		if err := db.Create(&devObj).Error; err != nil {
+			zlog.Warn("seed dev_object failed", zap.Int64("app_id", app.ID), zap.Error(err))
+			continue
+		}
+		devObjCount++
+		existingDevObjAppIDSet[app.ID] = true
+
+		// 跳过已有发展大会的记录
+		if existingMeetingDevIDSet[devObj.ID] {
+			continue
+		}
+
+		// 创建发展大会（通过）
+		meetingAt := now.AddDate(0, -1, -(int(devObj.ID) % 10))
+		meeting := models.TyDevelopmentMeeting{
+			DevelopmentID:     devObj.ID,
+			MeetingAt:         meetingAt,
+			ExpectedCount:     30,
+			ActualCount:       28,
+			ApproveCount:      26,
+			AgainstCount:      1,
+			AbstainCount:      1,
+			Decision:          "pass",
+			VolunteerFormPath: "",
+		}
+		if err := db.Create(&meeting).Error; err != nil {
+			zlog.Warn("seed dev_meeting failed", zap.Int64("dev_id", devObj.ID), zap.Error(err))
+			continue
+		}
+		meetingCount++
+		existingMeetingDevIDSet[devObj.ID] = true
+
+		// 跳过已有花名册的学生
+		if existingRosterStudentIDSet[app.StudentID] {
+			continue
+		}
+
+		// 创建团员花名册
+		rosterBizNo := fmt.Sprintf("TY-ROSTER-%d-%04d", now.Year(), app.StudentID)
+		probationaryAt := meetingAt.AddDate(0, 0, 1)
+		roster := models.TyMemberRoster{
+			BizNo:                rosterBizNo,
+			StudentID:            app.StudentID,
+			ApplicationID:        &app.ID,
+			BranchID:             app.BranchID,
+			JoinAt:               meetingAt,
+			BecomeProbationaryAt: &probationaryAt,
+			Status:               "active",
+		}
+		if err := db.Create(&roster).Error; err != nil {
+			zlog.Warn("seed member_roster failed", zap.Int64("student_id", app.StudentID), zap.Error(err))
+			continue
+		}
+		rosterCount++
+		existingRosterStudentIDSet[app.StudentID] = true
+
+		// 更新学生政治面貌为"预备团员"
+		db.Model(&models.IdxStudent{}).Where("id = ? AND is_deleted = 0", app.StudentID).
+			Update("political_status", "probationary")
+	}
+
+	if devObjCount > 0 || meetingCount > 0 || rosterCount > 0 {
+		zlog.Info("extra ty development pipeline seeded",
+			zap.Int("dev_objects", devObjCount),
+			zap.Int("meetings", meetingCount),
+			zap.Int("rosters", rosterCount),
+		)
+	}
+
+	// ========== TY: 中学入团学生直接录入花名册（无大学发展记录，纸质档案补录） ==========
+	// 查找政治面貌为"共青团员"但尚无花名册记录的学生
+	var memberStudents []models.IdxStudent
+	db.Where("is_deleted = 0 AND political_status = ?", "member").Order("id ASC").Find(&memberStudents)
+
+	middleSchoolRosterCount := 0
+	for _, stu := range memberStudents {
+		// 跳过已有花名册的学生
+		if existingRosterStudentIDSet[stu.ID] {
+			continue
+		}
+		existingRosterStudentIDSet[stu.ID] = true
+
+		// 查找该学生所属团支部
+		var stuBranch models.TyBranch
+		var branchFound bool
+		if stu.CollegeID != nil {
+			if err := db.Where("college_id = ? AND is_deleted = 0", *stu.CollegeID).First(&stuBranch).Error; err == nil {
+				branchFound = true
+			}
+		}
+		if !branchFound && len(branches) > 0 {
+			stuBranch = branches[int(stu.ID)%len(branches)]
+			branchFound = true
+		}
+		if !branchFound {
+			zlog.Warn("skip middle-school member roster: no branch for student", zap.Int64("student_id", stu.ID))
+			continue
+		}
+
+		// 中学入团时间：根据学号推算，约在入学前1-3年（14-16岁）
+		// 学号前4位为入学年份，入团时间约为入学年份-2年
+		joinYear := 2020 // 默认值
+		if len(stu.StudentNo) >= 4 {
+			// 学号格式如 2023010101，前4位为入学年份
+			var year int
+			fmt.Sscanf(stu.StudentNo[:4], "%d", &year)
+			if year > 2015 && year < 2030 {
+				joinYear = year - 2 // 中学入团，约14岁
+			}
+		}
+		joinMonth := 3 + int(stu.ID)%10 // 3-12月随机
+		joinDate := time.Date(joinYear, time.Month(joinMonth), 15, 0, 0, 0, 0, time.Local)
+
+		rosterBizNo := fmt.Sprintf("TY-ROSTER-%d-%04d", joinYear, stu.ID)
+		roster := models.TyMemberRoster{
+			BizNo:                rosterBizNo,
+			StudentID:            stu.ID,
+			ApplicationID:        nil, // 中学入团，无大学申请记录
+			BranchID:             stuBranch.ID,
+			JoinAt:               joinDate,
+			BecomeProbationaryAt: nil, // 中学已直接入团，无预备期
+			Status:               "active",
+		}
+		if err := db.Create(&roster).Error; err != nil {
+			zlog.Warn("seed middle-school member roster failed", zap.Int64("student_id", stu.ID), zap.Error(err))
+			continue
+		}
+		middleSchoolRosterCount++
+	}
+
+	if middleSchoolRosterCount > 0 {
+		zlog.Info("extra middle-school member rosters seeded", zap.Int("count", middleSchoolRosterCount))
+	}
+
+	// ========== ST: 更多社团和活动 ==========
+	var existingAssocs int64
+	db.Model(&models.StAssociation{}).Where("is_deleted = 0").Count(&existingAssocs)
+
+	assocNames := []struct {
+		name  string
+		scope string
+	}{
+		{"摄影协会", "面向全校学生开展摄影技术学习、作品创作、展览策划与比赛组织活动。"},
+		{"文学社", "面向全校学生开展文学创作、读书分享、诗歌朗诵与文学比赛活动。"},
+		{"志愿者协会", "面向全校学生开展志愿服务、社区帮扶、环保宣传与公益活动。"},
+		{"篮球协会", "面向全校学生开展篮球训练、比赛组织、裁判培训与体育交流活动。"},
+		{"科技创新社", "面向全校学生开展科技创新项目、专利申请、竞赛训练与技术交流活动。"},
+	}
+
+	for i, an := range assocNames {
+		collegeIdx := i % len(colleges)
+		college := colleges[collegeIdx]
+		presidentIdx := (i*7 + 10) % len(students)
+		registeredAt := now.AddDate(-1, -i, 0)
+		rating := 3 + i%3
+		bizNo := fmt.Sprintf("ST-%d-%04d", now.Year(), int(existingAssocs)+i+1)
+
+		assoc := models.StAssociation{
+			BizNo: bizNo, Name: an.name, CollegeID: college.ID,
+			TutorUserID: &admin.ID, PresidentStudentID: &students[presidentIdx].ID,
+			BusinessScope: an.scope, Status: "registered",
+			RegisteredAt: &registeredAt, FoundedAt: &registeredAt,
+			StarRating: &rating, CreatedBy: &admin.ID, UpdatedBy: &admin.ID,
+		}
+		if err := db.Create(&assoc).Error; err != nil {
+			continue
+		}
+
+		// 成员
+		for j := 0; j < 8; j++ {
+			stuIdx := (i*10 + j + 5) % len(students)
+			role := "member"
+			core := 0
+			if j == 0 {
+				role = "president"
+				core = 1
+			} else if j == 1 {
+				role = "vice_president"
+				core = 1
+			} else if j == 2 {
+				role = "director"
+				core = 1
+			}
+			db.Create(&models.StFounder{AssociationID: assoc.ID, StudentID: students[stuIdx].ID, JoinedAt: registeredAt})
+			db.Create(&models.StAssocMember{AssociationID: assoc.ID, StudentID: students[stuIdx].ID, Role: role, JoinedAt: registeredAt, IsCoreOfficer: core})
+		}
+
+		// 招新计划
+		interviewAt := now.AddDate(0, -1, 0)
+		deadline := now.AddDate(0, -1, 7)
+		plan := models.StRecruitPlan{
+			BizNo: fmt.Sprintf("ST-REC-%d-%04d", now.Year(), i+1),
+			AssociationID: assoc.ID, Season: "autumn", AcademicYear: "2025-2026",
+			TargetCount: 30, AssessmentMethod: "简历筛选 + 面试",
+			InterviewAt: &interviewAt, Status: "S3", ResultDeadline: &deadline,
+		}
+		db.Create(&plan)
+		for j := 0; j < 5; j++ {
+			stuIdx := (i*10 + j + 20) % len(students)
+			result := "pending"
+			if j < 3 {
+				result = "accepted"
+			} else if j == 3 {
+				result = "rejected"
+			}
+			db.Create(&models.StRecruitApply{PlanID: plan.ID, StudentID: students[stuIdx].ID, Result: result, ResultAt: &deadline})
+		}
+
+		// 活动
+		activityTitles := []string{"新学期迎新活动", "专业技能工作坊", "期末总结表彰大会", "校际交流联谊活动"}
+		for a := 0; a < 3; a++ {
+			startedAt := now.AddDate(0, -3+a, 7)
+			endedAt := startedAt.Add(3 * time.Hour)
+			expected := 50 + i*10
+			actBizNo := fmt.Sprintf("ST-ACT-%d-%04d", now.Year(), i*10+a+1)
+			activity := models.StActivity{
+				BizNo: actBizNo, AssociationID: assoc.ID,
+				Title: activityTitles[a%len(activityTitles)],
+				ActivityLevel: []string{"A", "B", "C"}[a%3],
+				ExpectedParticipants: expected, ExpectedCount: &expected,
+				BudgetCents: int64(200000 + i*50000),
+				Location:    fmt.Sprintf("活动中心 %d0%d", i+1, a+1),
+				StartedAt:   startedAt, EndedAt: endedAt,
+				Status: "S3", LastAction: "approve",
+			}
+			if err := db.Create(&activity).Error; err != nil {
+				continue
+			}
+			decidedAt := startedAt.AddDate(0, 0, -2)
+			db.Create(&models.StActivityApproval{ActivityID: activity.ID, StepNo: 1, ApproverRole: "R-COL-TUTOR", ApproverUserID: &admin.ID, Decision: "pass", Opinion: "活动方案完整，同意开展。", DecidedAt: &decidedAt})
+			db.Create(&models.StActivityApproval{ActivityID: activity.ID, StepNo: 2, ApproverRole: "R-SY-LEAGUE", ApproverUserID: &admin.ID, Decision: "pass", Opinion: "活动规模和预算合理，同意立项。", DecidedAt: &decidedAt})
+
+			// 签到
+			for j := 0; j < 10; j++ {
+				stuIdx := (i*10 + j + 5) % len(students)
+				late := 0
+				lateMinutes := 0
+				checkinAt := startedAt.Add(time.Duration(j) * time.Minute)
+				if j == 9 {
+					late = 1
+					lateMinutes = 15
+					checkinAt = startedAt.Add(15 * time.Minute)
+				}
+				db.Create(&models.StActivityCheckin{ActivityID: activity.ID, StudentID: students[stuIdx].ID, CheckinAt: checkinAt, Method: "qrcode", IsLate: late, LateMinutes: lateMinutes, IsPresent: 1})
+			}
+
+			score := 85 + i*2 + a
+			db.Create(&models.StActivitySummary{ActivityID: activity.ID, ActualParticipants: expected - 5, AchievementScore: &score, Suggestions: "活动效果良好，建议增加互动环节。", SubmittedAt: endedAt.Add(24 * time.Hour), IsOverdue: 0})
+			reviewedAt := now
+			db.Create(&models.StExpense{BizNo: fmt.Sprintf("ST-EXP-%d-%04d", now.Year(), i*10+a+1), ActivityID: activity.ID, AmountCents: int64(150000 + i*30000), InvoiceCount: 2 + a, InvoiceFiles: "[]", Status: "S3", ReviewedBy: &admin.ID, ReviewedAt: &reviewedAt, CoSignedBy: &admin.ID, PaidAt: &reviewedAt})
+		}
+	}
+	zlog.Info("extra st associations seeded", zap.Int("count", len(assocNames)))
+
+	// ========== SQ: 更多巡查、事件、活动 ==========
+	var existingInspections int64
+	db.Model(&models.SqInspection{}).Where("is_deleted = 0").Count(&existingInspections)
+
+	if len(buildings) > 0 {
+		inspectionTypes := []string{"hygiene", "safety", "fire_lane", "appliance"}
+		for i := 0; i < 15; i++ {
+			building := buildings[i%len(buildings)]
+			var floors []models.IdxDormFloor
+			db.Where("building_id = ? AND is_deleted = 0", building.ID).Order("floor_no ASC").Find(&floors)
+			if len(floors) == 0 {
+				continue
+			}
+			floor := floors[i%len(floors)]
+			var rooms []models.IdxDormRoom
+			db.Where("floor_id = ? AND is_deleted = 0", floor.ID).Order("room_no ASC").Find(&rooms)
+			if len(rooms) == 0 {
+				continue
+			}
+			room := rooms[i%len(rooms)]
+			score := 70 + i%30
+			inspBizNo := fmt.Sprintf("SQ-INSP-%d-%04d", now.Year(), int(existingInspections)+i+1)
+			inspection := models.SqInspection{
+				BizNo: inspBizNo, InspectionType: inspectionTypes[i%len(inspectionTypes)],
+				BuildingID: building.ID, FloorID: &floor.ID, RoomID: &room.ID,
+				InspectorUserID: admin.ID, InspectedAt: now.AddDate(0, 0, -(i+1)),
+				Score: &score, Summary: fmt.Sprintf("巡查发现整体情况%s，部分细节需改进。", []string{"良好", "一般", "较差"}[i%3]),
+				Status: "submitted",
+			}
+			if err := db.Create(&inspection).Error; err != nil {
+				continue
+			}
+			db.Create(&models.SqInspectionDeduction{InspectionID: inspection.ID, Item: []string{"地面有垃圾", "物品摆放不整齐", "阳台杂物堆积", "电线私拉乱接"}[i%4], Deduction: 3 + i%8})
+		}
+	}
+
+	// 更多事件
+	var existingIncidents int64
+	db.Model(&models.SqIncident{}).Where("is_deleted = 0").Count(&existingIncidents)
+	incidentTypes := []string{"晚归聚集", "违规电器", "噪音扰民", "安全隐患", "卫生不合格"}
+	incidentLevels := []string{"L1", "L2", "L2", "L3", "L3"}
+	for i := 0; i < 8; i++ {
+		building := buildings[i%len(buildings)]
+		var floors []models.IdxDormFloor
+		db.Where("building_id = ? AND is_deleted = 0", building.ID).Find(&floors)
+		if len(floors) == 0 {
+			continue
+		}
+		floor := floors[i%len(floors)]
+		var rooms []models.IdxDormRoom
+		db.Where("floor_id = ? AND is_deleted = 0", floor.ID).Find(&rooms)
+		if len(rooms) == 0 {
+			continue
+		}
+		room := rooms[i%len(rooms)]
+		stu1 := students[(i+2)%len(students)]
+		stu2 := students[(i+3)%len(students)]
+		incBizNo := fmt.Sprintf("SQ-INC-%d-%04d", now.Year(), int(existingIncidents)+i+1)
+		status := "closed"
+		closedAt := now.AddDate(0, 0, -(i - 1))
+		var closedAtPtr *time.Time
+		if i%4 == 0 {
+			status = "processing"
+			closedAtPtr = nil
+		} else {
+			closedAtPtr = &closedAt
+		}
+		incident := models.SqIncident{
+			BizNo: incBizNo, IncidentLevel: incidentLevels[i%len(incidentLevels)],
+			IncidentType: incidentTypes[i%len(incidentTypes)],
+			OccurredAt:   now.AddDate(0, 0, -(i+2)),
+			BuildingID:   building.ID, FloorID: &floor.ID, RoomID: &room.ID,
+			LocationDetail:     fmt.Sprintf("%d号楼%d层%d室", building.ID, floor.FloorNo, room.RoomNo),
+			ReporterUserID:     admin.ID,
+			InvolvedStudentIDs: fmt.Sprintf("[%d,%d]", stu1.ID, stu2.ID),
+			InitialAction:      "已现场核实并进行提醒教育。",
+			Status:             status, ClosedAt: closedAtPtr, ClosedBy: &admin.ID,
+		}
+		if err := db.Create(&incident).Error; err != nil {
+			continue
+		}
+		db.Create(&models.SqIncidentAction{IncidentID: incident.ID, ActionText: "楼层长现场核实情况，提醒学生遵守社区规定。", ActionAt: incident.OccurredAt, ActionBy: admin.ID})
+		if status == "closed" {
+			db.Create(&models.SqIncidentAction{IncidentID: incident.ID, ActionText: "辅导员完成谈话教育，事件关闭。", ActionAt: closedAt, ActionBy: admin.ID, IsFinal: 1})
+		}
+	}
+
+	// 更多社区活动
+	var existingSqActs int64
+	db.Model(&models.SqActivity{}).Where("is_deleted = 0").Count(&existingSqActs)
+	sqActTitles := []string{"文明寝室评比", "消防安全演练", "社区文化节", "期末复习互助活动", "新年联欢晚会"}
+	for i := 0; i < 5; i++ {
+		building := buildings[i%len(buildings)]
+		actStart := now.AddDate(0, -2+i, 10)
+		actBizNo := fmt.Sprintf("SQ-ACT-%d-%04d", now.Year(), int(existingSqActs)+i+1)
+		db.Create(&models.SqActivity{
+			BizNo: actBizNo, BuildingID: building.ID,
+			Title: sqActTitles[i], ActivityType: []string{"community_service", "safety_drill", "cultural", "academic", "entertainment"}[i],
+			ExpectedParticipants: 40 + i*10, BudgetCents: int64(100000 + i*20000),
+			StartedAt: actStart, EndedAt: actStart.Add(2 * time.Hour),
+			Summary: fmt.Sprintf("%s活动顺利开展，参与度高。", sqActTitles[i]),
+			Status: "S3", CoSignedBy: &admin.ID,
+		})
+	}
+
+	// 更多晚归记录
+	for i := 0; i < 10; i++ {
+		stu := students[(i+1)%len(students)]
+		db.Create(&models.SqLateReturn{
+			StudentID: stu.ID, OccurredAt: now.AddDate(0, 0, -(i+1)),
+			ReportedBy: admin.ID, Reason: []string{"实验室项目调试延时", "图书馆自习晚归", "社团活动结束较晚", "兼职工作返程"}[i%4],
+			Semester: "2025-2026-2",
+		})
+	}
+
+	// 更多违规电器
+	for i := 0; i < 6; i++ {
+		stu := students[(i+2)%len(students)]
+		var rooms []models.IdxDormRoom
+		db.Where("is_deleted = 0").Order("id ASC").Limit(1).Find(&rooms)
+		if len(rooms) == 0 {
+			continue
+		}
+		db.Create(&models.SqViolation{
+			StudentID: stu.ID, RoomID: rooms[0].ID,
+			ApplianceName: []string{"违规电热锅", "大功率吹风机", "电热毯", "电暖器", "电磁炉", "电烤箱"}[i],
+			SeizedAt: now.AddDate(0, 0, -(i+3)), ReportedBy: admin.ID,
+			Status: []string{"warned", "reported_to_college", "warned", "reported_to_college", "warned", "cancelled"}[i],
+		})
+	}
+
+	// 更多留校申请
+	for i := 0; i < 4; i++ {
+		stu := students[(i+3)%len(students)]
+		stayBizNo := fmt.Sprintf("SQ-STAY-%d-%04d", now.Year(), i+1)
+		db.Create(&models.SqVacationStay{
+			BizNo: stayBizNo, StudentID: stu.ID, Semester: "2025-2026-2",
+			StartAt: now.AddDate(0, 1, i*3), EndAt: now.AddDate(0, 1, 14+i*3),
+			Reason: []string{"参加校级创新创业项目集中训练", "准备学科竞赛", "实验室科研项目", "实习实践"}[i],
+			Status: []string{"S3", "S3", "S1", "S3"}[i], SubmittedAt: now,
+		})
+	}
+
+	zlog.Info("extra sq data seeded")
+
+	// ========== QG: 更多岗位、考勤、工资 ==========
+	var existingPositions int64
+	db.Model(&models.QgPosition{}).Where("is_deleted = 0").Count(&existingPositions)
+
+	morePositions := []models.QgPosition{
+		{BizNo: fmt.Sprintf("QG-POS-%04d", int(existingPositions)+1), DeptType: "admin", DeptName: "图书馆", Title: "阅览室管理员", Description: "负责阅览室秩序维护和图书整理", Headcount: 3, WeeklyHoursLimit: 12, HourlyRateCents: 1400, StartAt: time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), EndAt: time.Date(2026, 6, 30, 0, 0, 0, 0, time.Local), Status: "S3", SupervisorUserID: &admin.ID, CreatedBy: &admin.ID, UpdatedBy: &admin.ID},
+		{BizNo: fmt.Sprintf("QG-POS-%04d", int(existingPositions)+2), DeptType: "teaching", DeptName: "实验室", Title: "实验助理", Description: "协助教师准备实验器材和整理实验室", Headcount: 2, WeeklyHoursLimit: 15, HourlyRateCents: 1600, StartAt: time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), EndAt: time.Date(2026, 6, 30, 0, 0, 0, 0, time.Local), Status: "S3", SupervisorUserID: &admin.ID, CreatedBy: &admin.ID, UpdatedBy: &admin.ID},
+		{BizNo: fmt.Sprintf("QG-POS-%04d", int(existingPositions)+3), DeptType: "culture", DeptName: "体育馆", Title: "场馆管理员", Description: "负责体育场馆开放管理和器材维护", Headcount: 2, WeeklyHoursLimit: 18, HourlyRateCents: 1300, StartAt: time.Date(2025, 9, 1, 0, 0, 0, 0, time.Local), EndAt: time.Date(2026, 6, 30, 0, 0, 0, 0, time.Local), Status: "S3", SupervisorUserID: &admin.ID, CreatedBy: &admin.ID, UpdatedBy: &admin.ID},
+	}
+	for i := range morePositions {
+		if err := db.Create(&morePositions[i]).Error; err != nil {
+			zlog.Warn("seed extra position failed", zap.String("biz_no", morePositions[i].BizNo), zap.Error(err))
+		}
+	}
+
+	// 为更多学生创建岗位申请和考勤
+	var allPositions []models.QgPosition
+	db.Where("is_deleted = 0 AND status = ?", "S3").Find(&allPositions)
+
+	for pi, pos := range allPositions {
+		for si := 0; si < 3; si++ {
+			stuIdx := (pi*5 + si + 8) % len(students)
+			applyBizNo := fmt.Sprintf("QG-%04d", pi*10+si+1)
+			statuses := []string{"on_job", "on_job", "terminated"}
+			apply := models.QgPositionApply{
+				BizNo: applyBizNo, PositionID: pos.ID, StudentID: students[stuIdx].ID,
+				ApplyStatus: "accepted", Status: statuses[si%3],
+				OnBoardAt: func() *time.Time { t := now.AddDate(0, -3, 0); return &t }(),
+			}
+			if statuses[si%3] == "terminated" {
+				offBoard := now.AddDate(0, -1, 0)
+				apply.OffBoardAt = &offBoard
+			}
+			if err := db.Create(&apply).Error; err != nil {
+				continue
+			}
+
+			// 考勤记录（3个月，每月约10次）
+			for m := 1; m <= 3; m++ {
+				for d := 1; d <= 10; d++ {
+					workDate := time.Date(2026, time.Month(3-m+1), d*2+1, 0, 0, 0, 0, time.Local)
+					if workDate.After(now) {
+						continue
+					}
+					clockIn := time.Date(2026, time.Month(3-m+1), d*2+1, 14, 0, 0, 0, time.Local)
+					clockOut := clockIn.Add(3 * time.Hour)
+					attBizNo := fmt.Sprintf("QG-ATT-%04d", pi*100+m*10+d)
+					att := models.QgAttendance{
+						BizNo: attBizNo, ApplyID: apply.ID, StudentID: students[stuIdx].ID,
+						WorkDate: workDate, ClockInAt: &clockIn, ClockOutAt: &clockOut,
+						EffectiveHours: 3, ClockMethod: "card", IP: "127.0.0.1",
+						Geo: fmt.Sprintf("%s服务台", pos.DeptName),
+					}
+					if d%7 == 0 {
+						att.LateMinutes = 10
+						att.EffectiveHours = 2.5
+					}
+					db.Create(&att)
+				}
+			}
+
+			// 月度考核
+			for m := 1; m <= 3; m++ {
+				assessBizNo := fmt.Sprintf("QG-ASM-%04d", pi*10+m)
+				db.Create(&models.QgMonthlyAssess{
+					BizNo: assessBizNo, ApplyID: apply.ID, StudentID: students[stuIdx].ID,
+					AssessYear: 2026, AssessMonth: 4 - m,
+					ScoreAttendance: 90 + si, ScoreWorkComplete: 88 + si, ScoreComprehensive: 92 + si,
+					WeightedScore: 90.0 + float64(si), Coefficient: 1.0, Status: "S3",
+					Note: "工作表现良好，出勤稳定。",
+				})
+			}
+
+			// 工资单
+			totalHours := 30.0 * 3
+			gross := int64(totalHours * float64(pos.HourlyRateCents))
+			payBizNo := fmt.Sprintf("QG-PAY-%04d", pi*10+1)
+			payroll := models.QgPayroll{
+				BizNo: payBizNo, StudentID: students[stuIdx].ID, ApplyID: apply.ID,
+				PayYear: 2026, PayMonth: 3, TotalHours: totalHours,
+				GrossCents: gross, NetCents: gross, Coefficient: 1.0,
+				BankAccountLast4Enc: cryptox.Encrypt("1234"),
+				Status: "reviewed", ReviewedBy: &admin.ID,
+			}
+			db.Create(&payroll)
+		}
+	}
+
+	zlog.Info("extra qg data seeded")
+
+	// ========== CMP: 所有学生综合测评分数 ==========
+	var rule models.CmpRuleVersion
+	if err := db.Where("is_deleted = 0 AND is_active = 1").Order("id DESC").First(&rule).Error; err == nil {
+		var existingCmpCount int64
+		db.Model(&models.CmpScore{}).Where("is_deleted = 0").Count(&existingCmpCount)
+
+		if existingCmpCount < int64(len(students)) {
+			for i, stu := range students {
+				var exists int64
+				db.Model(&models.CmpScore{}).Where("student_id = ? AND academic_year = ? AND is_deleted = 0", stu.ID, "2025-2026").Count(&exists)
+				if exists > 0 {
+					continue
+				}
+				total := 95.0 - float64(i)*0.8
+				if total < 60 {
+					total = 60 + float64(i%20)
+				}
+				classRank := i + 1
+				collegeRank := i + 3
+				score := models.CmpScore{
+					StudentID: stu.ID, AcademicYear: "2025-2026",
+					TotalScore: total, RankInClass: &classRank, RankInCollege: &collegeRank,
+					RuleVersionID: rule.ID, ComputedAt: time.Now(),
+				}
+				if err := db.Create(&score).Error; err != nil {
+					continue
+				}
+				details := []models.CmpScoreDetail{
+					{ScoreID: score.ID, Dimension: "league", SubItem: "团内表现", SourceModule: "TY", RawValue: "团内活动参与", Score: 18 - float64(i%5), Weight: 0.25},
+					{ScoreID: score.ID, Dimension: "assoc", SubItem: "社团活动", SourceModule: "ST", RawValue: "社团任职与活动", Score: 16 - float64(i%4), Weight: 0.20},
+					{ScoreID: score.ID, Dimension: "community", SubItem: "社区自治", SourceModule: "SQ", RawValue: "寝室巡查表现", Score: 14 - float64(i%3), Weight: 0.15},
+					{ScoreID: score.ID, Dimension: "workstudy", SubItem: "勤工履职", SourceModule: "QG", RawValue: "岗位工时考核", Score: 13 - float64(i%2), Weight: 0.15},
+					{ScoreID: score.ID, Dimension: "academic", SubItem: "学业成绩", SourceModule: "IDX", RawValue: "GPA与排名", Score: 24 - float64(i%6), Weight: 0.25},
+				}
+				for _, detail := range details {
+					db.Create(&detail)
+				}
+			}
+			zlog.Info("extra cmp scores seeded for remaining students")
+		}
+	}
+
+	zlog.Info("extra test data seeding completed")
 }

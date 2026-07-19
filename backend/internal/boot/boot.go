@@ -128,6 +128,7 @@ func Run() error {
 	}
 
 	// 种子数据：admin + 角色 + 字典 + 菜单 + 院系 + 学生 + 团支部 + 学生用户 + 业务演示数据
+	DeduplicateExistingData(db, zlog) // 先清理重复数据（入团申请、团课记录按学号去重）
 	SeedAdmin(db, zlog)
 	SeedDicts(db, zlog)
 	SeedMenus(db, zlog)
@@ -141,6 +142,7 @@ func Run() error {
 	SeedCmpRuleVersion(db, zlog)
 	SeedTyApplicationForLisi(db, zlog)
 	SeedOtherBusinessData(db, zlog)
+	SeedExtraTestData(db, zlog) // 批量补充各模块测试数据
 
 	// 初始化 LRU 缓存（ADR-017：5min TTL，512 条目）
 	cache := cachex.New(512, 5*time.Minute)
@@ -437,11 +439,21 @@ func buildRouter(cfg *Config, db *gorm.DB, zlog *zap.Logger, cache *cachex.Cache
 	// Dashboard 路由（受保护，所有登录用户可访问）
 	dashboardHandler.RegisterRoutes(protected)
 
+	// SPA 静态资源服务（必须在 NoRoute 之前注册）
+	// 使用自定义 handler 确保正确的 MIME 类型（避免 JS 被当作 text/html）
+	frontendDist := filepath.Join("frontend", "dist")
+	r.GET("/assets/*filepath", func(c *gin.Context) {
+		c.File(filepath.Join(frontendDist, "assets", c.Param("filepath")))
+	})
+	r.GET("/images/*filepath", func(c *gin.Context) {
+		c.File(filepath.Join(frontendDist, "images", c.Param("filepath")))
+	})
+
 	r.NoRoute(func(c *gin.Context) {
 		// SPA fallback：非 /api 开头的路径回退到 index.html（前端路由接管）
 		path := c.Request.URL.Path
 		if !strings.HasPrefix(path, "/api") {
-			c.File(filepath.Join("frontend", "dist", "index.html"))
+			c.File(filepath.Join(frontendDist, "index.html"))
 			return
 		}
 		c.JSON(http.StatusNotFound, gin.H{"code": 1404, "message": "not found"})
